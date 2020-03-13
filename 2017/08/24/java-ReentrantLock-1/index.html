@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ReentrantLock精读(1)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/24/java-ReentrantLock-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ReentrantLock精读(1)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-24
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ReentrantLock精读(1)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>ReentrantLock</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>重入锁的实现特征</li>
+<li><code>Sync</code>类</li>
+<li>非公平的<code>NonfairSync</code></li>
+<li>公平的<code>FairSync</code></li>
+</ol>
+<h2 id="重入锁的实现特征"><a href="#重入锁的实现特征" class="headerlink" title="重入锁的实现特征"></a>重入锁的实现特征</h2><ol>
+<li>可重入。</li>
+<li>构造器可以指定<code>公平性</code>。</li>
+<li><code>tryLock()</code>始终调用非公平的获取。</li>
+<li><code>ReentrantLock</code>与<code>AQS</code>一样序列化只保存<code>state</code>变量。</li>
+<li>重入度最大支持<code>2^31 - 1</code>。超过这个值抛出<code>Error(&quot;Maximum lock count exceeded&quot;)</code>。</li>
+</ol>
+<h2 id="Sync类"><a href="#Sync类" class="headerlink" title="Sync类"></a>Sync类</h2><p><code>Sync</code>类继承图：<br><img src="/img/java-ReentrantLock-1-1.bmp" alt=""></p>
+<h3 id="继承自AQS类必须实现的几个方法"><a href="#继承自AQS类必须实现的几个方法" class="headerlink" title="继承自AQS类必须实现的几个方法"></a>继承自AQS类必须实现的几个方法</h3><p>由于实现的是一个独占锁，所以必须实现以下的方法：</p>
+<ol>
+<li><code>tryAcquire()</code></li>
+<li><code>tryRelease()</code></li>
+<li><code>isHeldExclusively()</code></li>
+</ol>
+<h3 id="Sync实现的主要方法"><a href="#Sync实现的主要方法" class="headerlink" title="Sync实现的主要方法"></a>Sync实现的主要方法</h3><p><code>Sync</code>类继承<code>AQS</code>类，而且是<code>NonfairSync</code>和<code>FairSync</code>类的公共父类。<br><code>Sync</code>实现了：</p>
+<ol>
+<li><code>nonfairTryAcquire(int acquires)</code>，<code>tryAcquire()</code>非公平的实现。</li>
+<li><code>tryRelease()</code></li>
+<li><code>isHeldExclusively()</code></li>
+</ol>
+<h3 id="nonfairTryAcquire-int-acquires"><a href="#nonfairTryAcquire-int-acquires" class="headerlink" title="nonfairTryAcquire(int acquires)"></a>nonfairTryAcquire(int acquires)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">nonfairTryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">final</span> Thread current = Thread.currentThread();</span><br><span class="line">            <span class="keyword">int</span> c = getState();<span class="comment">//volatile读</span></span><br><span class="line">	    <span class="comment">// 直接获取</span></span><br><span class="line">            <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, acquires)) &#123;</span><br><span class="line">                    setExclusiveOwnerThread(current);</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;     <span class="comment">// 可重入</span></span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (current == getExclusiveOwnerThread()) &#123;</span><br><span class="line">                <span class="keyword">int</span> nextc = c + acquires;</span><br><span class="line">                <span class="keyword">if</span> (nextc &lt; <span class="number">0</span>) <span class="comment">// overflow 最大 2^31 - 1</span></span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">                setState(nextc); <span class="comment">// volatile写</span></span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>voltile读<code>getState()</code>，获取锁的内存语义。获取<code>state</code>的值。</li>
+<li>如果<code>c == 0</code>， 表示独占锁尚未被获取，所以直接<code>CAS</code>更新，设置当前独占线程。这个方法是非公平获取的实现，所以不用考虑<code>sync</code>队列的情况。</li>
+<li>如果<code>c != 0</code>，则说明独占锁已经被获取了，然后判断是否是当前线程获取的，如果是则增加重入度即可。</li>
+<li>否则返回<code>false</code>。</li>
+</ol>
+<p>由<code>nonfairTryAcquire()</code>的实现可知，首先实现了重入的性质，其次不需要考虑<code>sync</code>队列的情况，即实现的是一个非公平获取的锁。</p>
+<p><code>nonfairTryAcquire()</code>使用在两个地方：</p>
+<ol>
+<li>非公平锁的<code>tryAcquire()</code>。</li>
+<li>非公平锁和公平锁中的<code>tryLock()</code>方法。</li>
+</ol>
+<h3 id="tryRelease"><a href="#tryRelease" class="headerlink" title="tryRelease()"></a>tryRelease()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryRelease</span><span class="params">(<span class="keyword">int</span> releases)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">int</span> c = getState() - releases;</span><br><span class="line">            <span class="keyword">if</span> (Thread.currentThread() != getExclusiveOwnerThread())</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalMonitorStateException();</span><br><span class="line">            <span class="keyword">boolean</span> free = <span class="keyword">false</span>;</span><br><span class="line">            <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">                free = <span class="keyword">true</span>;</span><br><span class="line">                setExclusiveOwnerThread(<span class="keyword">null</span>);</span><br><span class="line">            &#125;</span><br><span class="line">            setState(c);<span class="comment">// volatile写</span></span><br><span class="line">            <span class="keyword">return</span> free;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>tryRelease(int release)</code>：释放独占重入锁。</p>
+<ol>
+<li>计算释放后的<code>state</code>值。</li>
+<li>如果当前线程不是占用独占锁的线程，则抛出<code>IllegalMonitorStateException</code>异常。</li>
+<li>如果<code>c==0</code>，说明重入度为<code>0</code>了，需要释放独占锁，将占有独占锁的线程设置为<code>null</code>，返回<code>true</code>。</li>
+<li>否则<code>c &gt; 0</code>，则仅仅减小重入度而已，更新<code>state</code>，返回<code>false</code>。</li>
+</ol>
+<p><code>tryRelease(int release)</code>方法在公平锁和非公平锁中是通用的。</p>
+<h3 id="isHeldExclusively"><a href="#isHeldExclusively" class="headerlink" title="isHeldExclusively()"></a>isHeldExclusively()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isHeldExclusively</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> getExclusiveOwnerThread() == Thread.currentThread();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>isHeldExclusively()</code>判断占用<code>独占锁</code>的线程是否是<code>当前线程</code>。</p>
+<h3 id="sync实现的其它方法"><a href="#sync实现的其它方法" class="headerlink" title="sync实现的其它方法"></a>sync实现的其它方法</h3><p>总共4个：</p>
+<ol>
+<li><code>newCondition()</code></li>
+<li><code>getOwner()</code></li>
+<li><code>getHoldCount()</code></li>
+<li><code>isLocked()</code></li>
+</ol>
+<h4 id="newCondition"><a href="#newCondition" class="headerlink" title="newCondition()"></a>newCondition()</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> ConditionObject <span class="title">newCondition</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">new</span> ConditionObject();</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>创建一个新的<code>Condition</code>队列。</p>
+<h4 id="getOwner"><a href="#getOwner" class="headerlink" title="getOwner()"></a>getOwner()</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> Thread <span class="title">getOwner</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> getState() == <span class="number">0</span> ? <span class="keyword">null</span> : getExclusiveOwnerThread();</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>返回当前占用独占锁的线程。<br>如果当前独占锁没有线程占用，则返回<code>null</code>。</p>
+<h4 id="getHoldCount"><a href="#getHoldCount" class="headerlink" title="getHoldCount()"></a>getHoldCount()</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getHoldCount</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> isHeldExclusively() ? getState() : <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>获取当前锁的重入度。</p>
+<h4 id="isLocked"><a href="#isLocked" class="headerlink" title="isLocked()"></a>isLocked()</h4><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isLocked</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> getState() != <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>判断当前的独占锁是否被占用。</p>
+<h2 id="非公平的NonfairSync"><a href="#非公平的NonfairSync" class="headerlink" title="非公平的NonfairSync"></a>非公平的NonfairSync</h2><p><code>NonfairSync</code>继承<code>Sync</code>类，实现了两个方法：</p>
+<ol>
+<li><code>lock()</code></li>
+<li><code>tryAcquire()</code></li>
+</ol>
+<h3 id="lock"><a href="#lock" class="headerlink" title="lock()"></a>lock()</h3><p><code>lock()</code>：阻塞式非公平获取锁，而且忽略中断。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, <span class="number">1</span>))</span><br><span class="line">                setExclusiveOwnerThread(Thread.currentThread());</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">                acquire(<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果<code>CAS</code>更新成功，则获取成功，设置占用独占锁的线程为当前线程。</li>
+<li>否则<code>CAS</code>失败，则调用<code>acquire(1)</code>，阻塞式获取，而且忽略中断。</li>
+</ol>
+<h3 id="tryAcquire"><a href="#tryAcquire" class="headerlink" title="tryAcquire()"></a>tryAcquire()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> nonfairTryAcquire(acquires);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>直接调用<code>Sync</code>的<code>nonfairTryAcquire(acquires)</code>，非公平获取。</p>
+<h2 id="公平的FairSync"><a href="#公平的FairSync" class="headerlink" title="公平的FairSync"></a>公平的FairSync</h2><p>与<code>NonfairSync</code>一样，<code>FairSync</code>继承<code>Sync</code>，实现了两个方法：</p>
+<ol>
+<li><code>lock()</code></li>
+<li><code>tryAcquire()</code></li>
+</ol>
+<h3 id="lock-1"><a href="#lock-1" class="headerlink" title="lock()"></a>lock()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">lock</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            acquire(<span class="number">1</span>);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>直接调用<code>acquire(1)</code>，阻塞忽略中断的获取，由于下面<code>tryAcquire()</code>是公平获取的实现，所以<code>acquire()</code>也是公平获取锁。</p>
+<h3 id="tryAcquire-1"><a href="#tryAcquire-1" class="headerlink" title="tryAcquire()"></a>tryAcquire()</h3><p><code>tryAcquire()</code>：公平获取锁，需要考虑<code>sync</code>队列中是否还存在比当前线程成等待事件更长的此线程。这个判断由<code>hasQueuedPredecessors()</code>完成。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">hasQueuedPredecessors</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        Node t = tail; <span class="comment">// Read fields in reverse initialization order</span></span><br><span class="line">        Node h = head;</span><br><span class="line">        Node s;</span><br><span class="line">        <span class="keyword">return</span> h != t &amp;&amp;</span><br><span class="line">            ((s = h.next) == <span class="keyword">null</span> || s.thread != Thread.currentThread());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>这里分为两种情况：</p>
+<ol>
+<li>队列为空，即<code>head == tail</code>，则返回<code>false</code>。</li>
+<li>队列非空，则查看队列中第一个结点的线程是否不是当前线程。不是，则返回<code>true</code>，是则返回<code>false</code>。</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> acquires)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">final</span> Thread current = Thread.currentThread();</span><br><span class="line">            <span class="keyword">int</span> c = getState();</span><br><span class="line">            <span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">		<span class="comment">// 首先查看 阻塞队列的状态</span></span><br><span class="line">		<span class="comment">// 队列中是否还有比当前线程等待更长时间的线程</span></span><br><span class="line">		<span class="comment">// 如果有 则返回true</span></span><br><span class="line">                <span class="keyword">if</span> (!hasQueuedPredecessors() &amp;&amp;</span><br><span class="line">                    compareAndSetState(<span class="number">0</span>, acquires)) &#123;</span><br><span class="line">                    setExclusiveOwnerThread(current);</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">else</span> <span class="keyword">if</span> (current == getExclusiveOwnerThread()) &#123;</span><br><span class="line">                <span class="keyword">int</span> nextc = c + acquires;</span><br><span class="line">                <span class="keyword">if</span> (nextc &lt; <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> Error(<span class="string">"Maximum lock count exceeded"</span>);</span><br><span class="line">                setState(nextc);</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>与<code>nonfairTryAcquire()</code>方法类似，唯一的区别：<br>在<code>c == 0</code>时，需要考虑<code>sync</code>队列的队列的情况。<br>如果队列中有其它线程等待的时间比自己长，则返回<code>false</code>。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/24/java-ReentrantLock-2/" data-toggle="tooltip" data-placement="top"
+                           title="ReentrantLock精读(2)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/23/java-AQS-C-6/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(6)-CONDITION">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#重入锁的实现特征"><span class="toc-text">重入锁的实现特征</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Sync类"><span class="toc-text">Sync类</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#继承自AQS类必须实现的几个方法"><span class="toc-text">继承自AQS类必须实现的几个方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Sync实现的主要方法"><span class="toc-text">Sync实现的主要方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nonfairTryAcquire-int-acquires"><span class="toc-text">nonfairTryAcquire(int acquires)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tryRelease"><span class="toc-text">tryRelease()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isHeldExclusively"><span class="toc-text">isHeldExclusively()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#sync实现的其它方法"><span class="toc-text">sync实现的其它方法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#newCondition"><span class="toc-text">newCondition()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#getOwner"><span class="toc-text">getOwner()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#getHoldCount"><span class="toc-text">getHoldCount()</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#isLocked"><span class="toc-text">isLocked()</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#非公平的NonfairSync"><span class="toc-text">非公平的NonfairSync</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#lock"><span class="toc-text">lock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tryAcquire"><span class="toc-text">tryAcquire()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#公平的FairSync"><span class="toc-text">公平的FairSync</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#lock-1"><span class="toc-text">lock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tryAcquire-1"><span class="toc-text">tryAcquire()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

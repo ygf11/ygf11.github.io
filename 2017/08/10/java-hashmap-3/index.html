@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Java-HashMap精读(2)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/10/java-hashmap-3/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Java-HashMap精读(2)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-10
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Java-HashMap精读(2)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>HashMap</code>源码基于1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>Key=null</code>或者<code>Value=null</code>的情况</li>
+<li>当<code>get()</code>查找的时候，判断目标<code>entry</code>的条件</li>
+<li>三种遍历以及及时失败策略</li>
+</ol>
+<h2 id="Key-null或者Value-null的情况"><a href="#Key-null或者Value-null的情况" class="headerlink" title="Key=null或者Value=null的情况"></a><code>Key=null</code>或者<code>Value=null</code>的情况</h2><p>在<code>HashMap</code>中添加键值对时，允许<code>key</code>或者<code>value</code>为<code>null</code>，或者都为<code>null</code>。<br>当<code>key</code>为<code>null</code>时，第一次添加会直接将键值对对应的<code>entry</code>插入到<code>table[0]</code>单链表中。<br>而当第二次或者第三次，<code>key</code>为<code>null</code>时，则是直接更新<code>key=null</code>那个<code>entry</code>的<code>value</code>的值。</p>
+<h3 id="put-入口"><a href="#put-入口" class="headerlink" title="put()入口"></a>put()入口</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">put</span><span class="params">(K key, V value)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (key == <span class="keyword">null</span>)</span><br><span class="line">            <span class="keyword">return</span> putForNullKey(value);</span><br><span class="line">        .</span><br><span class="line">	.</span><br><span class="line">	.</span><br></pre></td></tr></table></figure>
+<p>然后调用<code>putForNullKey(value)</code>方法。</p>
+<h3 id="putForNullKey-value"><a href="#putForNullKey-value" class="headerlink" title="putForNullKey(value)"></a>putForNullKey(value)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> V <span class="title">putForNullKey</span><span class="params">(V value)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 从table[0]从查找key=null的entry</span></span><br><span class="line">	<span class="keyword">for</span> (Entry&lt;K,V&gt; e = table[<span class="number">0</span>]; e != <span class="keyword">null</span>; e = e.next) &#123;</span><br><span class="line">	    <span class="comment">// key = null</span></span><br><span class="line">	    <span class="keyword">if</span> (e.key == <span class="keyword">null</span>) &#123;</span><br><span class="line">	       	<span class="comment">// 更新      </span></span><br><span class="line">                V oldValue = e.value;</span><br><span class="line">                e.value = value;</span><br><span class="line">                e.recordAccess(<span class="keyword">this</span>);</span><br><span class="line">                <span class="keyword">return</span> oldValue;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">// table[0]链表中没有以key=null的entry</span></span><br><span class="line">        modCount++;</span><br><span class="line">	<span class="comment">// 构造直接插入</span></span><br><span class="line">        addEntry(<span class="number">0</span>, <span class="keyword">null</span>, value, <span class="number">0</span>);</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>遍历<code>table[0]</code>的单链表，查找<code>key=null</code>的<code>entry</code>。</li>
+<li>找到了<code>key=null</code>的<code>entry</code>，则更新<code>value</code>，返回旧的<code>value</code>。</li>
+<li>没有找到，则构造一个新的<code>key = null</code>的<code>entry</code>，插入到<code>table[0]</code>链表表头。</li>
+</ol>
+<h2 id="当get-查找的时候，判断目标entry的条件"><a href="#当get-查找的时候，判断目标entry的条件" class="headerlink" title="当get()查找的时候，判断目标entry的条件"></a>当get()查找的时候，判断目标entry的条件</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">get</span><span class="params">(Object key)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (key == <span class="keyword">null</span>)</span><br><span class="line">            <span class="keyword">return</span> getForNullKey();</span><br><span class="line">        <span class="keyword">int</span> hash = hash(key.hashCode());</span><br><span class="line">        <span class="keyword">for</span> (Entry&lt;K,V&gt; e = table[indexFor(hash, table.length)];</span><br><span class="line">             e != <span class="keyword">null</span>;</span><br><span class="line">             e = e.next) &#123;</span><br><span class="line">            Object k;</span><br><span class="line">	    <span class="comment">// 判断是目标engtry的条件</span></span><br><span class="line">            <span class="keyword">if</span> (e.hash == hash &amp;&amp; ((k = e.key) == key || key.equals(k)))</span><br><span class="line">                <span class="keyword">return</span> e.value;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>锁上面可以看出：</p>
+<ol>
+<li><code>e.hash() = hash(key.HashCode())</code>，<code>entry</code>的<code>hash</code>值是<code>put</code>的时候放上去的。</li>
+<li><code>e.key == key</code>，即目标<code>entry</code>的<code>key</code>对象的引用值要与查找<code>key</code>相同，或者<code>entrty.key.eqauls(key)</code>。</li>
+</ol>
+<h2 id="三种遍历"><a href="#三种遍历" class="headerlink" title="三种遍历"></a>三种遍历</h2><p><code>HashMap</code>中有三种遍历方式：</p>
+<ol>
+<li>遍历<code>entry</code>，使用<code>map.entrySet()</code>获取迭代器(<code>EntryIterator</code>对象)。</li>
+<li>遍历<code>key</code>， 使用<code>map.keySet()</code>获取迭代器(<code>KeyIterator</code>对象)。</li>
+<li>遍历<code>value</code>，使用<code>map.values()</code>获取迭代器(<code>ValueIterator</code>对象)。</li>
+</ol>
+<h3 id="类关系图"><a href="#类关系图" class="headerlink" title="类关系图"></a>类关系图</h3><p><img src="/img/java-hashmap-2-2.bmp" alt=""></p>
+<p>所以<code>EntryIterator</code>、<code>KeyIterator</code>和<code>VauleIterator</code>都继承<code>HashIterator</code>类。<br>遍历的主体是由<code>HashIterator</code>完成的。子类仅仅调用<code>nextEntry()</code>方法，实现自己的<code>next()</code>方法。<br><code>EntryIterator</code>遍历<code>Entry</code>，所以<code>next()</code>方法返回<code>Entry</code>。<br><code>KeyIterator</code>遍历<code>Key</code>，所以<code>next()</code>方法返回<code>K</code>。<br><code>VauleIterator</code>遍历<code>Value</code>，所以<code>next()</code>方法返回<code>V</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// EntryIterator</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">EntryIterator</span> <span class="keyword">extends</span> <span class="title">HashIterator</span>&lt;<span class="title">Map</span>.<span class="title">Entry</span>&lt;<span class="title">K</span>,<span class="title">V</span>&gt;&gt; </span>&#123;</span><br><span class="line">    <span class="keyword">public</span> Map.<span class="function">Entry&lt;K,V&gt; <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> nextEntry();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// keyIterator</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">KeyIterator</span> <span class="keyword">extends</span> <span class="title">HashIterator</span>&lt;<span class="title">K</span>&gt; </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> K <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> nextEntry().getKey();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ValueIterator</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">ValueIterator</span> <span class="keyword">extends</span> <span class="title">HashIterator</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> V <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> nextEntry().value;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="HashIterator"><a href="#HashIterator" class="headerlink" title="HashIterator"></a>HashIterator</h3><p><code>HashIterator</code>类实现了<code>Iterator</code>接口。<code>Iterator</code>包含三个方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Iterator</span>&lt;<span class="title">E</span>&gt; </span>&#123;</span><br><span class="line">    <span class="function"><span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function">E <span class="title">next</span><span class="params">()</span></span>;</span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>HashIterator</code>实现了<code>hasNext()</code>和<code>remove()</code>，但是实现了子类<code>next()</code>方法的前端<code>nextEntry()</code>。</p>
+<h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="comment">// 下一个遍历的entry</span></span><br><span class="line">Entry&lt;K,V&gt; next;        <span class="comment">// next entry to return</span></span><br><span class="line">       <span class="keyword">int</span> expectedModCount;   <span class="comment">// For fast-fail</span></span><br><span class="line"><span class="comment">// 当前遍历时的bucket下标</span></span><br><span class="line">       <span class="keyword">int</span> index;              <span class="comment">// current slot</span></span><br><span class="line"><span class="comment">// 当前的entry</span></span><br><span class="line">       Entry&lt;K,V&gt; current;     <span class="comment">// current entry</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>next</code>：表示下一个要遍历的<code>Entry</code>。</li>
+<li><code>expectedModCount</code>：当<code>expectedModCount</code>与<code>HashMap</code>中的<code>volatile</code>变量<code>modCount</code>不相同时，说明发生了并发修改，抛出<code>ConcurrentModificationException</code>。及时失败策略。</li>
+<li><code>index</code>：当前正在遍历的链表表头，所在<code>table</code>的下标。</li>
+<li><code>current</code>：当前的entry。</li>
+</ol>
+<h3 id="构造函数"><a href="#构造函数" class="headerlink" title="构造函数"></a>构造函数</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">HashIterator() &#123;</span><br><span class="line">	    <span class="comment">// fail - fast </span></span><br><span class="line">            expectedModCount = modCount;</span><br><span class="line">            <span class="keyword">if</span> (size &gt; <span class="number">0</span>) &#123; <span class="comment">// advance to first entry</span></span><br><span class="line">                Entry[] t = table;</span><br><span class="line">		<span class="comment">// 找到第一个不为null的entry 赋值给next</span></span><br><span class="line">                <span class="keyword">while</span> (index &lt; t.length &amp;&amp; (next = t[index++]) == <span class="keyword">null</span>)</span><br><span class="line">                    ;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>expectedModCount</code>设置为<code>modCount</code>。</li>
+<li>找出第一个不为<code>null</code>的<code>entry</code>。</li>
+</ol>
+<h3 id="hasNext"><a href="#hasNext" class="headerlink" title="hasNext()"></a>hasNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> next != <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>判断<code>next</code>是否为<code>null</code>，作为遍历是否继续的条件。</p>
+<h3 id="nextEntry"><a href="#nextEntry" class="headerlink" title="nextEntry()"></a>nextEntry()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> Entry&lt;K,V&gt; <span class="title">nextEntry</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	    <span class="comment">// modCount volatile变量</span></span><br><span class="line">	    <span class="comment">// 当前线程遍历时  其它线程正在修改(添加 删除)</span></span><br><span class="line">	    <span class="comment">// 抛出ConcurrentModificationException</span></span><br><span class="line">            <span class="keyword">if</span> (modCount != expectedModCount)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> ConcurrentModificationException();</span><br><span class="line">            Entry&lt;K,V&gt; e = next;</span><br><span class="line">	    <span class="comment">// 没有检查hasNext() 造成的错误</span></span><br><span class="line">            <span class="keyword">if</span> (e == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line"></span><br><span class="line">	    <span class="comment">// 遍历寻找下一个entry 赋值给entry</span></span><br><span class="line">            <span class="keyword">if</span> ((next = e.next) == <span class="keyword">null</span>) &#123;</span><br><span class="line">                Entry[] t = table;</span><br><span class="line">                <span class="keyword">while</span> (index &lt; t.length &amp;&amp; (next = t[index++]) == <span class="keyword">null</span>)</span><br><span class="line">                    ;</span><br><span class="line">            &#125;</span><br><span class="line">	    <span class="comment">// 返回entry</span></span><br><span class="line">            current = e;</span><br><span class="line">            <span class="keyword">return</span> e;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>nextEntry()</code>设置让<code>next</code>指向下一个<code>entry</code>，然后返回当前对象。</p>
+<ol>
+<li>判断<code>expectedModCount</code>是否等于<code>modCount</code>，不相等说明出现了当前线程在遍历，其它线程在修改的情况，所以抛出<code>ConcurrentModificationException</code>，即采用及时失败策略。</li>
+<li>否则，判断<code>next</code>所指对象是否为<code>null</code>，如果为<code>null</code>则说明没有用<code>hasNext()</code>检查，且已遍历完，所以抛出<code>NoSuchElementException</code>异常。</li>
+<li>寻找下一个非<code>null</code>的<code>entry</code>赋值给<code>next</code>，没有则将<code>next</code>赋值为<code>null</code>。</li>
+<li>返回<code>cuurent</code>。</li>
+</ol>
+<h3 id="remove"><a href="#remove" class="headerlink" title="remove()"></a>remove()</h3><p><code>remove()</code>用于删除<code>current</code>的<code>entry</code>，一般在<code>next()</code>方法之后调用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       	    <span class="comment">// null</span></span><br><span class="line">	    <span class="keyword">if</span> (current == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException();</span><br><span class="line"> 	    <span class="comment">// 并发异常	</span></span><br><span class="line">	    <span class="keyword">if</span> (modCount != expectedModCount)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> ConcurrentModificationException();</span><br><span class="line">            Object k = current.key;</span><br><span class="line">            current = <span class="keyword">null</span>;</span><br><span class="line">	    <span class="comment">// 删除</span></span><br><span class="line">            HashMap.<span class="keyword">this</span>.removeEntryForKey(k);</span><br><span class="line">            expectedModCount = modCount;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>current = null</code>，则抛出<code>IllegalStateException</code>异常。可连续调用两次<code>remove()</code>方法会出现这种情况。</li>
+<li>和<code>nextEntry()</code>一样，<code>expectedModCount</code>和预期值不相同，则抛出<code>ConcurrentModificationException</code>。</li>
+<li>调用<code>removeEntryForKey()</code>方法移除。</li>
+<li>更新<code>expectedModCount</code>的值。</li>
+</ol>
+<h3 id="三种遍历的比较"><a href="#三种遍历的比较" class="headerlink" title="三种遍历的比较"></a>三种遍历的比较</h3><p>如果需要遍历<code>Key</code>和<code>Value</code>，则直接使用<code>EntryIterator</code>，比较合适。<br>如果采用<code>KeyIterator</code>，则在遍历每个<code>Key</code>的同时，需要调用<code>map.get(key)</code>获取<code>value</code>，这相比<code>EntryIterator</code>会慢很多，每次都增加了查找的时间。<code>ValueIterator</code>不能遍历两个。<br>所以一般遍历<code>key</code>和<code>Value</code>使用第一种。<br>只遍历<code>Key</code>时，采用<code>KeyIterator</code>。<br>只遍历<code>Value</code>时，采用<code>ValueIterator</code>。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/11/java-LinkedHashMap-2/" data-toggle="tooltip" data-placement="top"
+                           title="Java-LinkedHashMap精读(1)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/10/java-hashmap-2/" data-toggle="tooltip" data-placement="top"
+                           title="Java-HashMap精读(1)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Key-null或者Value-null的情况"><span class="toc-text">Key&#x3D;null或者Value&#x3D;null的情况</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#put-入口"><span class="toc-text">put()入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#putForNullKey-value"><span class="toc-text">putForNullKey(value)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#当get-查找的时候，判断目标entry的条件"><span class="toc-text">当get()查找的时候，判断目标entry的条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#三种遍历"><span class="toc-text">三种遍历</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#类关系图"><span class="toc-text">类关系图</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#HashIterator"><span class="toc-text">HashIterator</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造函数"><span class="toc-text">构造函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hasNext"><span class="toc-text">hasNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nextEntry"><span class="toc-text">nextEntry()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#remove"><span class="toc-text">remove()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#三种遍历的比较"><span class="toc-text">三种遍历的比较</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

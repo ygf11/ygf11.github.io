@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        并发使用HashMap产生死循环问题｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/09/30/HashMap-Problem/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>并发使用HashMap产生死循环问题</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-09-30
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            并发使用HashMap产生死循环问题
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>并发<code>put</code>引起的三个问题</li>
+<li>并发<code>put</code>造成冲突单链表成环</li>
+<li>并发<code>put</code>元素丢失但不成环</li>
+<li>并发<code>put</code>元素丢失而且成环</li>
+<li><code>get</code>会出现的问题</li>
+<li>总结</li>
+</ol>
+<h2 id="并发put引起的三个问题"><a href="#并发put引起的三个问题" class="headerlink" title="并发put引起的三个问题"></a>并发put引起的三个问题</h2><ol>
+<li>并发<code>put</code>造成冲突单链表成环</li>
+<li>并发<code>put</code>元素丢失但不成环</li>
+<li>并发<code>put</code>元素丢失而且成环</li>
+</ol>
+<p>上面三个问题都是在多线程并发<code>put</code>时，多个线程都要扩容的情况下发生的。</p>
+<h2 id="并发put造成冲突单链表成环"><a href="#并发put造成冲突单链表成环" class="headerlink" title="并发put造成冲突单链表成环"></a>并发put造成冲突单链表成环</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">transfer</span><span class="params">(Entry[] newTable)</span> </span>&#123;</span><br><span class="line">        Entry[] src = table;</span><br><span class="line">        <span class="keyword">int</span> newCapacity = newTable.length;</span><br><span class="line">        <span class="keyword">for</span> (<span class="keyword">int</span> j = <span class="number">0</span>; j &lt; src.length; j++) &#123;</span><br><span class="line">            Entry&lt;K,V&gt; e = src[j];</span><br><span class="line">            <span class="keyword">if</span> (e != <span class="keyword">null</span>) &#123;</span><br><span class="line">                src[j] = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">do</span> &#123;</span><br><span class="line">                    Entry&lt;K,V&gt; next = e.next;</span><br><span class="line">		    <span class="comment">// 计算插入新hashmap的数组下标</span></span><br><span class="line">                    <span class="keyword">int</span> i = indexFor(e.hash, newCapacity);</span><br><span class="line">		    <span class="comment">// 插入到头部</span></span><br><span class="line">		    e.next = newTable[i];</span><br><span class="line">                    newTable[i] = e;</span><br><span class="line">                    e = next;</span><br><span class="line">                &#125; <span class="keyword">while</span> (e != <span class="keyword">null</span>);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>线程1</code>执行到上面<code>transfer()</code>方法中的第<code>9</code>行代码，此时<code>线程1</code>局部变量状态为：<br><img src="/img/hashmap-problem-1.bmp" alt=""><br>此时<code>线程1</code>时间片用完，由<code>运行</code>改为<code>就绪状态</code>，等待被调度，<code>线程2</code>被调度。<br><code>线程2</code>也执行<code>transfer()</code>方法，进行转移：<br><img src="/img/hashmap-problem-2.bmp" alt=""><br>然后<code>线程1</code>又被调度执行，当前<code>线程1</code>局部变量状态为：<br><img src="/img/hashmap-problem-3.bmp" alt=""><br>这里<code>next</code>和<code>e</code>的位置置换了，主要因为<code>HashMap</code>插入的时候使用的都是<code>头插法</code>。<br>接下来<code>线程1</code>执行如下：<br><img src="/img/hashmap-problem-4.bmp" alt=""><br>转移<code>key=4</code>的<code>entry</code>：<br><img src="/img/hashmap-problem-5.bmp" alt=""><br>最后再次插入<code>key=0</code>的<code>entry</code>导致链表成环：<br><img src="/img/hashmap-problem-6.bmp" alt=""></p>
+<p>由于<code>next=null</code>，所以退出循环。这种并发后扩容导致链表成环，可能会在<code>get</code>方法获取一个不存在<code>key</code>的<code>entry</code>造成<code>死循环</code>，即单核<code>CPU</code>使用率达到<code>100%</code>。</p>
+<h2 id="并发put元素丢失但不成环"><a href="#并发put元素丢失但不成环" class="headerlink" title="并发put元素丢失但不成环"></a>并发put元素丢失但不成环</h2><p>由于<code>HashMap</code>具有两个特征：</p>
+<ol>
+<li>容量是<code>2</code>的幂次方，即<code>table</code>数组的长度为<code>2</code>的幂次方。</li>
+<li>扩容时将<code>table</code>数组的长度扩容成原来的两倍。</li>
+</ol>
+<p>所以转移的时候，旧的<code>table</code>中一条冲突链表的<code>entry</code>只可能转移到新<code>table</code>中的两条冲突单链表上。<br>当多线程并发扩容时，<code>线程1</code>的<code>e</code>和<code>next</code>执行的<code>entry</code>转移到新<code>table</code>中的不同冲突链表时，会产生元素丢失，但是不会成环。</p>
+<p><code>线程1</code>执行到上面<code>transfer()</code>方法中的第<code>9</code>行代码，此时<code>线程1</code>局部变量状态为：<br><img src="/img/hashmap-problem-7.bmp" alt=""></p>
+<p><code>线程2</code>也执行<code>transfer()</code>方法，进行转移：<br><img src="/img/hashmap-problem-8.bmp" alt=""></p>
+<p>然后<code>线程1</code>被调度，继续转移：<br><img src="/img/hashmap-problem-9.bmp" alt=""></p>
+<p>没有成环的原因是<code>next</code>执行转移后会转移到不同单链表的结点。</p>
+<h2 id="并发put元素丢失而且成环"><a href="#并发put元素丢失而且成环" class="headerlink" title="并发put元素丢失而且成环"></a>并发put元素丢失而且成环</h2><p>这种情况是第一种情况的延伸，满足两个条件：</p>
+<ol>
+<li>即转移时旧的单链表中<code>e</code>和<code>next</code>会转移到新<code>table</code>的同一个单链表中，</li>
+<li>而且后面还有其它<code>entry</code>，这些<code>entry</code>也会转移到新<code>table</code>中与<code>e</code>和<code>next</code>相同的单链表中。这些<code>entry</code>会丢失。</li>
+</ol>
+<p><code>线程1</code>执行到上面<code>transfer()</code>方法中的第<code>9</code>行代码，此时<code>线程1</code>局部变量状态为：<br><img src="/img/hashmap-problem-10.bmp" alt=""></p>
+<p><code>线程2</code>被调度，也执行<code>transfer()</code>方法，进行转移：<br><img src="/img/hashmap-problem-11.bmp" alt=""></p>
+<p>然后<code>线程1</code>被调度，此时<code>线程1</code>局部变量状态为：<br><img src="/img/hashmap-problem-12.bmp" alt=""></p>
+<p><code>线程1</code>头插法，插入<code>key=0</code>的<code>entry</code>：<br><img src="/img/hashmap-problem-13.bmp" alt=""></p>
+<p><code>线程1</code>头插法，插入<code>key=4</code>的<code>entry</code>：<br><img src="/img/hashmap-problem-14.bmp" alt=""></p>
+<p>再次插入<code>key=0</code>的<code>entry</code>：<br><img src="/img/hashmap-problem-15.bmp" alt=""><br>从上面可以看出<code>线程1</code>的<code>table</code>中，不包含<code>key=8</code>的<code>entry</code>，即丢失了，而且还成环了。</p>
+<h2 id="get会出现的问题"><a href="#get会出现的问题" class="headerlink" title="get会出现的问题"></a>get会出现的问题</h2><ol>
+<li>并发<code>put</code>之后，如果<code>entry</code>没有丢失，而且成环，则<code>get</code>获取不存在的<code>entry</code>时可能导致死循环。</li>
+<li>并发<code>put</code>之后，可能会造成<code>entry</code>丢失。所以<code>put</code>非<code>null</code>元素时，再<code>get</code>这个元素可能会返回<code>null</code>。</li>
+</ol>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><ol>
+<li>当<code>线程1</code>中的<code>e</code>和<code>next</code>转移后位于新<code>table</code>的同一链表时，会造成死循环。</li>
+<li>当<code>线程1</code>中的<code>e</code>和<code>next</code>转移后位于新<code>table</code>的不同一链表时，会造成<code>entry</code>丢失，但不成环。</li>
+<li>当<code>线程1</code>中的<code>e</code>和<code>next</code>转移后位于新<code>table</code>的同一链表，而且旧链中还有其它属于新<code>table</code>同一链表的<code>entry</code>时，会造成这些<code>entry</code>丢失，而且成环。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/10/08/java-CopyOnWriteArrayList/" data-toggle="tooltip" data-placement="top"
+                           title="java-CopyOnWriteArrayList(1)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/09/14/java-hashtable/" data-toggle="tooltip" data-placement="top"
+                           title="java-hashtable">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并发put引起的三个问题"><span class="toc-text">并发put引起的三个问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并发put造成冲突单链表成环"><span class="toc-text">并发put造成冲突单链表成环</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并发put元素丢失但不成环"><span class="toc-text">并发put元素丢失但不成环</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#并发put元素丢失而且成环"><span class="toc-text">并发put元素丢失而且成环</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#get会出现的问题"><span class="toc-text">get会出现的问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#总结"><span class="toc-text">总结</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

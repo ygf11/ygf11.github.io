@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Netty-连接关闭过程｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/04/Netty-close/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Netty-连接关闭过程</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-04
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Netty-连接关闭过程
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <h2 id="nio-channel中的半连接"><a href="#nio-channel中的半连接" class="headerlink" title="nio channel中的半连接"></a>nio channel中的半连接</h2><ol>
+<li><code>SocketChannel.shutdownOutput()</code>：关闭写半连接，在另外一端会使<code>read</code>事件就绪，但是读<code>channel</code>时，会抛出<code>ClosedChannelException</code>的异常。</li>
+<li><code>SocketChannel.shutdownInput()</code>：关闭读半连接。一般是对另外一端，写半连接关闭的确认。</li>
+</ol>
+<h2 id="Netty中Channel关闭连接的入口"><a href="#Netty中Channel关闭连接的入口" class="headerlink" title="Netty中Channel关闭连接的入口"></a>Netty中Channel关闭连接的入口</h2><p><code>Netty</code>有一个选项，称为<code>ALLOW_HALF_CLOSURE</code>，如果开启了这个选项。<br>那么当一方关闭了<code>Channel</code>，或者关闭了<code>写半连接</code>之后，仅仅只是关闭自己的<code>读连接</code>。<br>但是<code>Netty</code>中关闭连接，还涉及到清理<code>ChannelOutboundBuffer</code>和删除<code>pipeline</code>中的<code>handler</code>，所以在完全关闭后需要做这些工作。</p>
+<h3 id="主动关闭连接的入口"><a href="#主动关闭连接的入口" class="headerlink" title="主动关闭连接的入口"></a>主动关闭连接的入口</h3><ol>
+<li><code>ctx.close()</code>。</li>
+<li><code>在channelpipeline的handler中捕获到异常时</code>，比如<code>invokeExceptionCaught(cause)</code>。</li>
+<li><code>SocketChannel.shutdownOutput()</code>。<br>其中<code>2</code>会进入<code>1</code>中的<code>ctx.close()</code>。前面两种在主动关闭这一端，是全关闭+清理工作全部进行。<br>而<code>3</code>仅仅只是关闭写半连接。</li>
+</ol>
+<h3 id="响应另外一端的关闭连接"><a href="#响应另外一端的关闭连接" class="headerlink" title="响应另外一端的关闭连接"></a>响应另外一端的关闭连接</h3><p>当<code>主动关闭的一端</code>主动关闭连接，则接收端根据是否开启<code>ALLOW_HALF_CLOSURE</code>，有两种选择具体的操作：</p>
+<ol>
+<li><code>ALLOW_HALF_CLOSURE</code>开启，则仅仅只是调用<code>shutdownInput()</code>，关闭读半连接。</li>
+<li><code>ALLOW_HALF_CLOSURE</code>关闭，则将<code>SocketChannel</code>关闭，然后做清理<code>ChannelOutboundBuffer</code>、<code>注销selector关注事件</code>和清除在<code>pipeline</code>中的<code>handler</code>。</li>
+</ol>
+<h2 id="主动关闭连接ctx-close"><a href="#主动关闭连接ctx-close" class="headerlink" title="主动关闭连接ctx.close()"></a>主动关闭连接ctx.close()</h2><p><code>ctx.close()</code>是一个出站事件，会从<code>pipeline</code>的<code>tail</code>传播到<code>head</code>，最后在执行<code>head.unsafe.close()</code>方法。主要流程如下：<br>调用<code>AbstractChannel.close(promise, cause,closecause, notify)</code>方法。<br>这个方法完成三个功能：</p>
+<ol>
+<li><code>doclose0()</code>：调用<code>nio SocketChannel.close()</code>将<code>SocketChannel</code>关闭。</li>
+<li><code>outboundBuffer.failFlushed(cause, notify);</code>：清除<code>entry</code>链表中所有的<code>flushedentry</code>。</li>
+<li><code>outboundBuffer.close(closeCause);</code>：清理<code>entry</code>链表中所有的<code>unflushedentry</code>。</li>
+<li><code>fireChannelInactiveAndDeregister(wasActive);</code>：完成注销对<code>selector</code>关注事件，传播<code>Channelinactive</code>和<code>ChannelUnregister</code>事件。并且在<code>ChannelUnregister</code>事件中的<code>head</code>出移除所有的<code>ChannelHandler</code>。</li>
+</ol>
+<h3 id="响应一方的关闭"><a href="#响应一方的关闭" class="headerlink" title="响应一方的关闭"></a>响应一方的关闭</h3><p>当主动关闭一端完成<code>channel</code>的关闭和清理后，响应一方通过获取<code>selector</code>上的<code>OP_READ</code>就绪事件，开始响应。当是响应关闭时，读取<code>channel</code>时会抛出<code>ClosedChannelException</code>。从而开始调用<code>CloseOnRead()</code>方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// read处被调用 进行channel的关闭</span></span><br><span class="line">        <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">closeOnRead</span><span class="params">(ChannelPipeline pipeline)</span> </span>&#123;</span><br><span class="line">	    <span class="comment">// 读连接 是否未关闭</span></span><br><span class="line">	    <span class="keyword">if</span> (!isInputShutdown0()) &#123;</span><br><span class="line">		<span class="comment">// 是否采取半关闭  即对方关闭连接  但是这边还可以再发送数据</span></span><br><span class="line">                <span class="keyword">if</span> (Boolean.TRUE.equals(config().getOption(ChannelOption.ALLOW_HALF_CLOSURE))) &#123;</span><br><span class="line">                    shutdownInput();</span><br><span class="line">                    pipeline.fireUserEventTriggered(ChannelInputShutdownEvent.INSTANCE);</span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		    <span class="comment">//全关闭状态 </span></span><br><span class="line">                    close(voidPromise());</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                pipeline.fireUserEventTriggered(ChannelInputShutdownReadComplete.INSTANCE);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>如果读半连接没有关闭，则需要分两种情况分析：</p>
+<ol>
+<li><code>ALLOW_HALF_CLOSURE</code>选项开启。此时仅仅调用<code>shutdownInput();</code>关闭读连接，然后传播<code>fireUserEventTriggered</code>。<br>2 .<code>ALLOW_HALF_CLOSURE</code>选项关闭。则需要进行向<code>ctx.close()</code>一样的过程。即<br>2.1 将<code>channel</code>关闭。<br>2.2 清除<code>entry</code>链表中所有的<code>flushedentry</code>。<br>2.3 清理<code>entry</code>链表中所有的<code>unflushedentry</code>。<br>2.4 完成对<code>selector</code>关注事件的注销。<br>2.5 传播<code>Channelinactive</code>。<br>2.6 <code>ChannelUnregister</code>事件。并且在<code>ChannelUnregister</code>事件中的<code>head</code>出移除所有的<code>ChannelHandler</code></li>
+</ol>
+<p>// 有待考证</p>
+<h2 id="关于NettyChannel被GC回收的理解"><a href="#关于NettyChannel被GC回收的理解" class="headerlink" title="关于NettyChannel被GC回收的理解"></a>关于NettyChannel被GC回收的理解</h2><p><code>jvm</code>使用的是<code>GC ROOTS</code>判断一个对象是否是可回收。即只要在所有作为<code>GC ROOTS</code>的对象的引用链中找不到目标对象，则目标对象可以被回收。<br>可以作为<code>GC ROOTS</code>的有线面四种：</p>
+<ol>
+<li>线程栈本地变量表中引用的对象。</li>
+<li>方法区中的静态对象引用。</li>
+<li>运行时常量池中引用的对象。</li>
+<li>本地方法栈中引用的对象。</li>
+</ol>
+<h3 id="Netty-Channel没有关闭时"><a href="#Netty-Channel没有关闭时" class="headerlink" title="Netty Channel没有关闭时"></a>Netty Channel没有关闭时</h3><p>首先每个<code>NioEventLoop</code>都会持有一个<code>selector</code>，以及这个<code>selector</code>的<code>selectKeys</code>。<br>当注册将一个<code>SocketChannel</code>注册到<code>selector</code>时，会将<code>Netty Channel</code>(其中包含了<code>SocketChannel</code>)对象存放到<code>selector</code>内部。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 向给定的选择器注册此通道，返回一个选择键。</span></span><br><span class="line"><span class="function">SelectionKey <span class="title">register</span><span class="params">(Selector sel, <span class="keyword">int</span> ops, Object att)</span></span></span><br></pre></td></tr></table></figure>
+<p>其中<code>Object att</code>就是注册时，存放在<code>selector</code>中的<code>NioSocketChannel</code>。</p>
+<p>而<code>selector</code>作为线程栈本地变量表中的<code>对象引用</code>，长期存在，因为<code>NioEventLoop</code>中的<code>run()</code>方法是一个死循环。<br>所以将<code>selector</code>作为<code>GC ROOTS</code>，可以永久查找到已注册<code>NioSocketChannel</code>对象，而不会被<code>GC</code>回收。</p>
+<h3 id="Netty-Channel关闭后"><a href="#Netty-Channel关闭后" class="headerlink" title="Netty Channel关闭后"></a>Netty Channel关闭后</h3><p>调用<code>ctx.close()</code>，会将<code>Channel</code>在<code>selector</code>注册的事件取消。<br>所以之后<code>selector</code>作为<code>GC ROOTS</code>无法定位到注销的<code>channel</code>，所以会被<code>GC</code>回收。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/10/java-hashmap-2/" data-toggle="tooltip" data-placement="top"
+                           title="Java-HashMap精读(1)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/07/29/Netty-write/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-write过程">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#nio-channel中的半连接"><span class="toc-text">nio channel中的半连接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Netty中Channel关闭连接的入口"><span class="toc-text">Netty中Channel关闭连接的入口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#主动关闭连接的入口"><span class="toc-text">主动关闭连接的入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#响应另外一端的关闭连接"><span class="toc-text">响应另外一端的关闭连接</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#主动关闭连接ctx-close"><span class="toc-text">主动关闭连接ctx.close()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#响应一方的关闭"><span class="toc-text">响应一方的关闭</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#关于NettyChannel被GC回收的理解"><span class="toc-text">关于NettyChannel被GC回收的理解</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Netty-Channel没有关闭时"><span class="toc-text">Netty Channel没有关闭时</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Netty-Channel关闭后"><span class="toc-text">Netty Channel关闭后</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

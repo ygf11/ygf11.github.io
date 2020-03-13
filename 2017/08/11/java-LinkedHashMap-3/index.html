@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Java-LinkedHashMap精读(2)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/11/java-LinkedHashMap-3/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Java-LinkedHashMap精读(2)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-11
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Java-LinkedHashMap精读(2)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>LinkedHashMap</code>源码基于1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>三种遍历</li>
+<li>其它重写的方法</li>
+</ol>
+<h2 id="三种遍历"><a href="#三种遍历" class="headerlink" title="三种遍历"></a>三种遍历</h2><p><code>HashMap</code>有三种遍历方式：</p>
+<ol>
+<li><code>entrySet()</code>获取迭代器，遍历<code>Entry</code>。</li>
+<li><code>keySet()</code>获取迭代器，遍历<code>Key</code>。</li>
+<li><code>values()</code>获取迭代器，遍历<code>value</code>。</li>
+</ol>
+<p>三种遍历的顺寻，都是无序的，从<code>table[0]</code>开始遍历每一条冲突单链表。</p>
+<p><code>LinkedHashMap</code>也有三种遍历方式，和上面一样:</p>
+<ol>
+<li><code>entrySet()</code>获取迭代器，遍历<code>Entry</code>。</li>
+<li><code>keySet()</code>获取迭代器，遍历<code>Key</code>。</li>
+<li><code>values()</code>获取迭代器，遍历<code>value</code>。</li>
+</ol>
+<p>为了让其遍历按照<code>header</code>双链表的顺序，增加了<code>LinkedHashIterator</code>类，并且<br>让<code>EntryIterator</code>、<code>KeyIterator</code>和<code>ValueIterator</code>都继承自<code>LinkedHashIterator</code>。<br>在<code>HashMap</code>中，<code>EntryIterator</code>、<code>KeyIterator</code>和<code>ValueIterator</code>都继承自<code>HashIterator</code>。<br>所以在<code>LinkedHashMap</code>，遍历的核心类为<code>LinkedHashIterator</code>。</p>
+<h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><p><code>LinkedHashIterator</code>实现了<code>Iterator</code>接口。<code>Iterator</code>接口包含三个方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">public</span> T <span class="title">next</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br></pre></td></tr></table></figure>
+<p><code>LinkedHashIterator</code>包含了三个成员变量：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Entry&lt;K,V&gt; nextEntry    = header.after;</span><br><span class="line">       Entry&lt;K,V&gt; lastReturned = <span class="keyword">null</span>;</span><br><span class="line"><span class="keyword">int</span> expectedModCount = modCount;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>nextEntry</code>：下一个遍历的<code>entry</code>。初始为<code>header.next</code>。</li>
+<li><code>lastReturned</code>：上一个返回的<code>entry</code>。</li>
+<li><code>expectedModCount</code>：检测并发修改。采用及时失败策略。</li>
+</ol>
+<h3 id="hasNext"><a href="#hasNext" class="headerlink" title="hasNext()"></a>hasNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> nextEntry != header;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>hasNext()</code>表示是否遍历结束。</p>
+<h3 id="remove"><a href="#remove" class="headerlink" title="remove()"></a>remove()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (lastReturned == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException();</span><br><span class="line">            <span class="keyword">if</span> (modCount != expectedModCount)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> ConcurrentModificationException();</span><br><span class="line"></span><br><span class="line">            LinkedHashMap.<span class="keyword">this</span>.remove(lastReturned.key);</span><br><span class="line">            lastReturned = <span class="keyword">null</span>;</span><br><span class="line">            expectedModCount = modCount;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>remove()</code>方法移除<code>lastReturned</code>这个<code>entry</code>。步骤如下：</p>
+<ol>
+<li>如果<code>lastReturned = null</code>，则表明重复调用<code>remove()</code>，抛出<code>IllegalStateException</code>异常。</li>
+<li>如果<code>modCount != expectedModCount</code>，则表明发生了并发修改，则及时失败，抛出<code>ConcurrentModificationException</code>异常。</li>
+<li>调用<code>HashMap的remove()</code>进行移除。</li>
+<li>将<code>lastReturned</code>设置为<code>null</code>。</li>
+<li>更新<code>expectedModCount</code>。</li>
+</ol>
+<h3 id="nextEntry"><a href="#nextEntry" class="headerlink" title="nextEntry()"></a>nextEntry()</h3><p><code>nextEntry()</code>是<code>EntryIterator</code>、<code>KeyIterator</code>和<code>ValueIterator</code>的<code>next()</code>方法的前端：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">KeyIterator</span> <span class="keyword">extends</span> <span class="title">LinkedHashIterator</span>&lt;<span class="title">K</span>&gt; </span>&#123;</span><br><span class="line">        <span class="function"><span class="keyword">public</span> K <span class="title">next</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> nextEntry().getKey(); &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">ValueIterator</span> <span class="keyword">extends</span> <span class="title">LinkedHashIterator</span>&lt;<span class="title">V</span>&gt; </span>&#123;</span><br><span class="line">        <span class="function"><span class="keyword">public</span> V <span class="title">next</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> nextEntry().value; &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">private</span> <span class="class"><span class="keyword">class</span> <span class="title">EntryIterator</span> <span class="keyword">extends</span> <span class="title">LinkedHashIterator</span>&lt;<span class="title">Map</span>.<span class="title">Entry</span>&lt;<span class="title">K</span>,<span class="title">V</span>&gt;&gt; </span>&#123;</span><br><span class="line">        <span class="keyword">public</span> Map.<span class="function">Entry&lt;K,V&gt; <span class="title">next</span><span class="params">()</span> </span>&#123; <span class="keyword">return</span> nextEntry(); &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>nextEntry()</code>方法从<code>header</code>中取出下一个遍历的<code>entry</code>，赋值给<code>nextEntry</code>，然后返回当前这个<code>entry</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">Entry&lt;K,V&gt; <span class="title">nextEntry</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (modCount != expectedModCount)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> ConcurrentModificationException();</span><br><span class="line">            <span class="keyword">if</span> (nextEntry == header)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line"></span><br><span class="line">            Entry&lt;K,V&gt; e = lastReturned = nextEntry;</span><br><span class="line">            nextEntry = e.after;</span><br><span class="line">            <span class="keyword">return</span> e;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>modCount != expectedModCount</code>，则抛出<code>ConcurrentModificationException</code>异常。</li>
+<li><code>nextEntry == header</code>，则表明遍历结束，遍历时没有用<code>hasNext()</code>进行检查。</li>
+<li>取出下一个<code>entry</code>，赋值给<code>nextEntry</code>，返回当前的<code>entry</code>。</li>
+</ol>
+<h2 id="其它重写的方法"><a href="#其它重写的方法" class="headerlink" title="其它重写的方法"></a>其它重写的方法</h2><p><code>LinkedHashMap</code>中其它被重写的方法，基本都是需要遍历的方法，则重写后改用<code>header</code>双联表遍历效率更加高。重写的方法有：</p>
+<ol>
+<li><code>transfer()</code>方法在扩容的时候使用，需要遍历。</li>
+<li><code>containsValue()</code>：查找目标的<code>value</code>是否存在。这里只能使用遍历的方法判断。</li>
+</ol>
+<h3 id="transfer"><a href="#transfer" class="headerlink" title="transfer()"></a>transfer()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">transfer</span><span class="params">(HashMap.Entry[] newTable)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> newCapacity = newTable.length;</span><br><span class="line">	<span class="comment">// 从heade.after开始遍历 遍历整条双链表</span></span><br><span class="line">        <span class="keyword">for</span> (Entry&lt;K,V&gt; e = header.after; e != header; e = e.after) &#123;</span><br><span class="line">            <span class="keyword">int</span> index = indexFor(e.hash, newCapacity);</span><br><span class="line">            e.next = newTable[index];</span><br><span class="line">            newTable[index] = e;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>从<code>heade.after</code>开始遍历 遍历整条双链表</li>
+<li>对每个<code>entry</code>进行散列，找出在<code>newTable</code>中的下标</li>
+<li>将<code>entry</code>插入到目标<code>table</code>项的表头。</li>
+</ol>
+<h3 id="containsValue"><a href="#containsValue" class="headerlink" title="containsValue()"></a>containsValue()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">containsValue</span><span class="params">(Object value)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// Overridden to take advantage of faster iterator</span></span><br><span class="line">        <span class="keyword">if</span> (value==<span class="keyword">null</span>) &#123;</span><br><span class="line">            <span class="keyword">for</span> (Entry e = header.after; e != header; e = e.after)</span><br><span class="line">                <span class="keyword">if</span> (e.value==<span class="keyword">null</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">for</span> (Entry e = header.after; e != header; e = e.after)</span><br><span class="line">                <span class="keyword">if</span> (value.equals(e.value))</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>分为两种情况：</p>
+<ol>
+<li>如果<code>value</code>为<code>null</code>，则遍历<code>header</code>双链表，找出<code>value = null</code>的entry。如果存在返回<code>true</code>，否则返回<code>false</code>。</li>
+<li>如果<code>value</code>不为<code>null</code>，则遍历<code>header</code>双链表，找出<code>value.equals(e.value)</code>的entry。如果存在返回<code>true</code>，否则返回<code>false</code>。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/12/java-WeakHashMap-2/" data-toggle="tooltip" data-placement="top"
+                           title="WeakHashMap(精读)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/11/java-LinkedHashMap-2/" data-toggle="tooltip" data-placement="top"
+                           title="Java-LinkedHashMap精读(1)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#三种遍历"><span class="toc-text">三种遍历</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hasNext"><span class="toc-text">hasNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#remove"><span class="toc-text">remove()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nextEntry"><span class="toc-text">nextEntry()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#其它重写的方法"><span class="toc-text">其它重写的方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#transfer"><span class="toc-text">transfer()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#containsValue"><span class="toc-text">containsValue()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

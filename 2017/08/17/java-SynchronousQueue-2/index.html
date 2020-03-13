@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        SynchronousQueue精读(2)-queue｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/17/java-SynchronousQueue-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>SynchronousQueue精读(2)-queue</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-17
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            SynchronousQueue精读(2)-queue
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>SynchronousQueue</code>源码基于jdk-1.7<br><code>SynchronousQueue</code>是无锁实现的阻塞队列。<br><code>queue</code>实现的是公平模式，包含一个<code>head</code>和<code>tail</code>指针，初始时<code>head = tail</code>，<code>head.next = null</code>：</p>
+<ol>
+<li>插入在<code>tail</code>插入。</li>
+<li>取出在<code>head</code>取出。</li>
+</ol>
+<p>所以实现<code>fifo</code>，先进先出的顺序。</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>Qnode</code></li>
+<li><code>Queue</code>成员变量和方法</li>
+<li><code>transfer()</code></li>
+<li><code>awaitFulfill()</code></li>
+<li><code>clean()</code></li>
+</ol>
+<h2 id="Qnode"><a href="#Qnode" class="headerlink" title="Qnode"></a>Qnode</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">volatile</span> QNode next;          <span class="comment">// next node in queue</span></span><br><span class="line"><span class="keyword">volatile</span> Object item;         <span class="comment">// CAS'ed to or from null</span></span><br><span class="line"><span class="keyword">volatile</span> Thread waiter;       <span class="comment">// to control park/unpark</span></span><br><span class="line"><span class="keyword">final</span> <span class="keyword">boolean</span> isData;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>next</code>：指向队列中的下一个结点。当将结点从队列中移除，则将<code>next</code>指向自身。</li>
+<li><code>item</code>：存放的数据，如果<code>item</code>指向自身结点引用，则表示取消结点操作。</li>
+<li><code>waiter</code>：操作指向的线程。持有这个对象，最要为了阻塞和唤醒。</li>
+<li><code>isData</code>：表示是获取(<code>poll()</code>和<code>take()</code>)操作，还是<code>offer()</code>和<code>put()</code>的插入操作。</li>
+</ol>
+<p>首先除了<code>isData</code>之外，都是<code>volatile</code>类型，跟<code>stack</code>一样是为了可见性。<br><code>isData</code>是<code>final</code>类型，所以是不可变对象，线程安全。</p>
+<h3 id="Qnode和Snode区别"><a href="#Qnode和Snode区别" class="headerlink" title="Qnode和Snode区别"></a>Qnode和Snode区别</h3><p>区别：</p>
+<ol>
+<li><code>Snode</code>多了一个<code>mode</code>域，表示<code>REQUEST</code>、<code>DATA</code>和<code>FULLFILLING</code>操作。</li>
+<li><code>Qnode</code>没有<code>mode</code>，而是用一个<code>isData</code>域来替代，因为<code>Queue</code>没有<code>FULLFILLING</code>这一阶段。<code>Stack</code>有匹配这个阶段主要是因为，栈的插入和获取都在<code>head</code>进行，所以并发情况比较多，不能靠一次<code>CAS</code>就可以完成，所以多了一个<code>FULLFILLING</code>阶段。而<code>Queue</code>里面插入和获取不再同一个结点，所以可以减少这个阶段。</li>
+<li><code>Snode</code>中结点取消，用<code>metch</code>域指向自身结点标识。</li>
+<li>而在<code>Qnode</code>中，结点操作取消用<code>item</code>指向自身标识。</li>
+<li><code>Qnode</code>没有<code>tryMatch()</code>操作。当需要与<code>head</code>处的结点进行配对时，取出<code>目标结点的item</code>域，然后移动<code>head</code>指向目标结点(移除)。</li>
+</ol>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">QNode(Object item, <span class="keyword">boolean</span> isData) &#123;</span><br><span class="line">                <span class="keyword">this</span>.item = item;</span><br><span class="line">                <span class="keyword">this</span>.isData = isData;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>设置<code>item</code>和<code>isData</code>。</p>
+<h3 id="casNext"><a href="#casNext" class="headerlink" title="casNext()"></a>casNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">casNext</span><span class="params">(QNode cmp, QNode val)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> next == cmp &amp;&amp;</span><br><span class="line">                    UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, nextOffset, cmp, val);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>更新结点的<code>next</code>域。</p>
+<h3 id="casItem"><a href="#casItem" class="headerlink" title="casItem()"></a>casItem()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">casItem</span><span class="params">(Object cmp, Object val)</span> </span>&#123;</span><br><span class="line">                <span class="keyword">return</span> item == cmp &amp;&amp;</span><br><span class="line">                    UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, itemOffset, cmp, val);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>更新结点的<code>item</code>域。</p>
+<h3 id="tryCancel"><a href="#tryCancel" class="headerlink" title="tryCancel()"></a>tryCancel()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">tryCancel</span><span class="params">(Object cmp)</span> </span>&#123;</span><br><span class="line">             UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, itemOffset, cmp, <span class="keyword">this</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>将结点的<code>item</code>域指向自身，表示结点操作取消。</p>
+<h3 id="isCancelled"><a href="#isCancelled" class="headerlink" title="isCancelled()"></a>isCancelled()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">isCancelled</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> item == <span class="keyword">this</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果结点的<code>item</code>域指向自身结点，则表示结点操作取消。</p>
+<h3 id="isOffList"><a href="#isOffList" class="headerlink" title="isOffList()"></a>isOffList()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">isOffList</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> next == <span class="keyword">this</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>如果结点的<code>next</code>域指向自身，则表示结点不在队列上。</p>
+<h2 id="Queue成员变量和方法"><a href="#Queue成员变量和方法" class="headerlink" title="Queue成员变量和方法"></a>Queue成员变量和方法</h2><h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">transient</span> <span class="keyword">volatile</span> QNode head;</span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">volatile</span> QNode tail;</span><br><span class="line">       <span class="comment">// 记录上一个取消结点的前驱</span></span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">volatile</span> QNode cleanMe;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>head</code>：队列头结点，头结点是一个哑结点。</li>
+<li><code>tail</code>：队列尾结点。</li>
+<li><code>cleanMe</code>：记录上一个取消结点的前驱。在<code>clean()</code>方法中被使用。删除上一个取消的结点。</li>
+</ol>
+<p>这三个域都是<code>volatile</code>的，是为了可见性。</p>
+<h3 id="构造方法-1"><a href="#构造方法-1" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">TransferQueue() &#123;</span><br><span class="line">            QNode h = <span class="keyword">new</span> QNode(<span class="keyword">null</span>, <span class="keyword">false</span>); <span class="comment">// initialize to dummy node.</span></span><br><span class="line">            head = h;</span><br><span class="line">            tail = h;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>创建一个队列头哑结点。<code>head = tail</code>，<code>head.next = null</code>。</p>
+<h3 id="advanceHead"><a href="#advanceHead" class="headerlink" title="advanceHead()"></a>advanceHead()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">advanceHead</span><span class="params">(QNode h, QNode nh)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (h == head &amp;&amp;</span><br><span class="line">        UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, headOffset, h, nh))</span><br><span class="line">        h.next = h; <span class="comment">// forget old next</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>更新<code>head</code>指向<code>nh</code>。另外让原来的<code>head</code>的<code>next</code>域指向自身。</p>
+<h3 id="advanceTail"><a href="#advanceTail" class="headerlink" title="advanceTail()"></a>advanceTail()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">advanceTail</span><span class="params">(QNode t, QNode nt)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (tail == t)</span><br><span class="line">                UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, tailOffset, t, nt);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>更新<code>tail</code>域为<code>nt</code>。</p>
+<h3 id="casCleanMe"><a href="#casCleanMe" class="headerlink" title="casCleanMe()"></a>casCleanMe()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">casCleanMe</span><span class="params">(QNode cmp, QNode val)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> cleanMe == cmp &amp;&amp;</span><br><span class="line">                UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, cleanMeOffset, cmp, val);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>更新<code>cleanMe</code>域。</p>
+<h2 id="transfer"><a href="#transfer" class="headerlink" title="transfer()"></a>transfer()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">Object <span class="title">transfer</span><span class="params">(Object e, <span class="keyword">boolean</span> timed, <span class="keyword">long</span> nanos)</span> </span>&#123;</span><br><span class="line">            QNode s = <span class="keyword">null</span>; <span class="comment">// constructed/reused as needed</span></span><br><span class="line">	    <span class="keyword">boolean</span> isData = (e != <span class="keyword">null</span>); <span class="comment">// 生产者 消费者判断</span></span><br><span class="line"></span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                QNode t = tail;</span><br><span class="line">                QNode h = head;</span><br><span class="line">		<span class="comment">// 尚未初始化完成 多线程情况</span></span><br><span class="line">                <span class="keyword">if</span> (t == <span class="keyword">null</span> || h == <span class="keyword">null</span>)         <span class="comment">// saw uninitialized value</span></span><br><span class="line">                    <span class="keyword">continue</span>;                       <span class="comment">// spin</span></span><br><span class="line"></span><br><span class="line">		<span class="comment">// 队列为空 或者 与当前队列中的结点同类型</span></span><br><span class="line">                <span class="keyword">if</span> (h == t || t.isData == isData) &#123; <span class="comment">// empty or same-mode</span></span><br><span class="line">                    QNode tn = t.next;</span><br><span class="line">		    <span class="comment">// 其它线程插入</span></span><br><span class="line">                    <span class="keyword">if</span> (t != tail)                  <span class="comment">// inconsistent read</span></span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">		    <span class="comment">// 滞后的tail 其它线程插入</span></span><br><span class="line">                    <span class="keyword">if</span> (tn != <span class="keyword">null</span>) &#123;               <span class="comment">// lagging tail</span></span><br><span class="line">                        advanceTail(t, tn);</span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">		    <span class="comment">// 等待事件已到 直接返回</span></span><br><span class="line">                    <span class="keyword">if</span> (timed &amp;&amp; nanos &lt;= <span class="number">0</span>)        <span class="comment">// can't wait</span></span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">		    <span class="comment">// 创建s</span></span><br><span class="line">                    <span class="keyword">if</span> (s == <span class="keyword">null</span>)</span><br><span class="line">                        s = <span class="keyword">new</span> QNode(e, isData);</span><br><span class="line">		    <span class="comment">// 插入tail之后</span></span><br><span class="line">                    <span class="keyword">if</span> (!t.casNext(<span class="keyword">null</span>, s))        <span class="comment">// failed to link in</span></span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">		    <span class="comment">//更新tail</span></span><br><span class="line">                    advanceTail(t, s);              <span class="comment">// swing tail and wait</span></span><br><span class="line">		    <span class="comment">//阻塞</span></span><br><span class="line">                    Object x = awaitFulfill(s, e, timed, nanos);</span><br><span class="line">		    <span class="comment">// 操作已经取消</span></span><br><span class="line">                    <span class="keyword">if</span> (x == s) &#123;                   <span class="comment">// wait was cancelled</span></span><br><span class="line">                        clean(t, s); <span class="comment">// 清理取消的结点</span></span><br><span class="line">                        <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">		    <span class="comment">// s还在队列中</span></span><br><span class="line">                    <span class="keyword">if</span> (!s.isOffList()) &#123;           <span class="comment">// not already unlinked</span></span><br><span class="line">                        advanceHead(t, s);          <span class="comment">// unlink if head			</span></span><br><span class="line">			<span class="keyword">if</span> (x != <span class="keyword">null</span>)              <span class="comment">// and forget fields</span></span><br><span class="line">                            s.item = s; <span class="comment">// item指向自身 准备被清理</span></span><br><span class="line">                        s.waiter = <span class="keyword">null</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">return</span> (x != <span class="keyword">null</span>) ? x : e;</span><br><span class="line">		    <span class="comment">// 与队列中的结点操作类型不同 则可以匹配</span></span><br><span class="line">                &#125; <span class="keyword">else</span> &#123;                            <span class="comment">// complementary-mode</span></span><br><span class="line">                    QNode m = h.next;               <span class="comment">// node to fulfill</span></span><br><span class="line">		    <span class="comment">// 其它线程更新了head 或者 tail</span></span><br><span class="line">                    <span class="keyword">if</span> (t != tail || m == <span class="keyword">null</span> || h != head)</span><br><span class="line">                        <span class="keyword">continue</span>;                   <span class="comment">// inconsistent read</span></span><br><span class="line">		    </span><br><span class="line">                    Object x = m.item;</span><br><span class="line">		    <span class="comment">// 尝试更新m的item域</span></span><br><span class="line">                    <span class="keyword">if</span> (isData == (x != <span class="keyword">null</span>) ||    <span class="comment">// m already fulfilled</span></span><br><span class="line">                        x == m ||                   <span class="comment">// m cancelled</span></span><br><span class="line">                        !m.casItem(x, e)) &#123;         <span class="comment">// lost CAS</span></span><br><span class="line">                        advanceHead(h, m);          <span class="comment">// dequeue and retry</span></span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">		    <span class="comment">// 更新head</span></span><br><span class="line">                    advanceHead(h, m);              <span class="comment">// successfully fulfilled</span></span><br><span class="line">		    <span class="comment">// 唤醒m对应的线程</span></span><br><span class="line">		    LockSupport.unpark(m.waiter);</span><br><span class="line">                    <span class="keyword">return</span> (x != <span class="keyword">null</span>) ? x : e;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>首先判断操作类型，然后主要分为两部分：</p>
+<ol>
+<li>如果队列为空，或者操作与队列<code>tail</code>尾部的操作相同，则将操作，线程对象封装成<code>Qnode</code>用<code>CAS</code>插入到队列尾部，插入成功后，则调用<code>awaitFulfill()</code>自旋或者阻塞等待匹配。</li>
+<li>否则，进行匹配，取出<code>head.next</code>的结点，记为<code>m</code>，获取<code>m</code>结点的<code>item</code>，并且将<code>m</code>的<code>item</code>设置为<code>e</code>(本次操作的<code>item</code>域)，最后更新<code>head</code>指向目标结点<code>m</code>进行移除。</li>
+</ol>
+<p>注意<code>transfer()</code>方法的返回值：</p>
+<ol>
+<li>对于放入数据的操作，如果成功则返回自己的<code>obejct</code>。超时返回<code>null</code>。</li>
+<li>对于获取数据的操作，如果成功则返回对方的<code>Object</code>。超时返回<code>null</code>。</li>
+</ol>
+<h2 id="awaitFulfill"><a href="#awaitFulfill" class="headerlink" title="awaitFulfill()"></a>awaitFulfill()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">Object <span class="title">awaitFulfill</span><span class="params">(QNode s, Object e, <span class="keyword">boolean</span> timed, <span class="keyword">long</span> nanos)</span> </span>&#123;</span><br><span class="line">            <span class="comment">/* Same idea as TransferStack.awaitFulfill */</span></span><br><span class="line">            <span class="keyword">long</span> lastTime = timed ? System.nanoTime() : <span class="number">0</span>;</span><br><span class="line">            Thread w = Thread.currentThread();</span><br><span class="line">            <span class="keyword">int</span> spins = ((head.next == s) ?</span><br><span class="line">                         (timed ? maxTimedSpins : maxUntimedSpins) : <span class="number">0</span>);</span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">		<span class="comment">// 中断 则取消任务		</span></span><br><span class="line">                <span class="keyword">if</span> (w.isInterrupted())</span><br><span class="line">                    s.tryCancel(e);		</span><br><span class="line">                Object x = s.item;</span><br><span class="line">		<span class="comment">// 退出</span></span><br><span class="line">                <span class="keyword">if</span> (x != e)</span><br><span class="line">                    <span class="keyword">return</span> x;</span><br><span class="line">                <span class="keyword">if</span> (timed) &#123;</span><br><span class="line">                    <span class="keyword">long</span> now = System.nanoTime();</span><br><span class="line">                    nanos -= now - lastTime;</span><br><span class="line">                    lastTime = now;</span><br><span class="line">		    <span class="comment">// 到达限时的时间 则取消操作</span></span><br><span class="line">                    <span class="keyword">if</span> (nanos &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">                        s.tryCancel(e);</span><br><span class="line">                        <span class="keyword">continue</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (spins &gt; <span class="number">0</span>)</span><br><span class="line">                    --spins;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (s.waiter == <span class="keyword">null</span>)</span><br><span class="line">                    s.waiter = w;</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (!timed)</span><br><span class="line">                    LockSupport.park(<span class="keyword">this</span>);</span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (nanos &gt; spinForTimeoutThreshold)</span><br><span class="line">                    LockSupport.parkNanos(<span class="keyword">this</span>, nanos);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>与<code>stack</code>中的自旋阻塞等待方法一样。</p>
+<h2 id="clean"><a href="#clean" class="headerlink" title="clean()"></a>clean()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 清理队列中item域指向自身的结点</span></span><br><span class="line">        <span class="function"><span class="keyword">void</span> <span class="title">clean</span><span class="params">(QNode pred, QNode s)</span> </span>&#123;</span><br><span class="line">            s.waiter = <span class="keyword">null</span>; <span class="comment">// forget thread</span></span><br><span class="line">            <span class="comment">// 每次只有一个一个结点不能清除，那就是最后一个插入的结点</span></span><br><span class="line">	    <span class="comment">// 将这个结点的pred保存为`cleanMe`，等到下次再清除。</span></span><br><span class="line">            <span class="keyword">while</span> (pred.next == s) &#123; <span class="comment">// Return early if already unlinked</span></span><br><span class="line">                QNode h = head;</span><br><span class="line">                QNode hn = h.next;   <span class="comment">// Absorb cancelled first node as head</span></span><br><span class="line">		<span class="comment">// 如果head.next已经取消 则清除</span></span><br><span class="line">                <span class="keyword">if</span> (hn != <span class="keyword">null</span> &amp;&amp; hn.isCancelled()) &#123;</span><br><span class="line">                    advanceHead(h, hn);</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                QNode t = tail;      <span class="comment">// Ensure consistent read for tail</span></span><br><span class="line">		<span class="comment">// 队列中没有结点了</span></span><br><span class="line">		<span class="keyword">if</span> (t == h)</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                QNode tn = t.next;</span><br><span class="line">		<span class="comment">// 其它线程插入</span></span><br><span class="line">		<span class="keyword">if</span> (t != tail)</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">		<span class="comment">// 更新</span></span><br><span class="line">                <span class="keyword">if</span> (tn != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    advanceTail(t, tn);</span><br><span class="line">                    <span class="keyword">continue</span>;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 如果s不是tail，则尝试清除</span></span><br><span class="line">                <span class="keyword">if</span> (s != t) &#123;        <span class="comment">// If not tail, try to unsplice</span></span><br><span class="line">                    QNode sn = s.next;</span><br><span class="line">                    <span class="keyword">if</span> (sn == s || pred.casNext(s, sn))</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 清除cleanMe.next</span></span><br><span class="line">                QNode dp = cleanMe;</span><br><span class="line">                <span class="keyword">if</span> (dp != <span class="keyword">null</span>) &#123;    <span class="comment">// Try unlinking previous cancelled node</span></span><br><span class="line">                    QNode d = dp.next;</span><br><span class="line">                    QNode dn;</span><br><span class="line">                    <span class="keyword">if</span> (d == <span class="keyword">null</span> ||               <span class="comment">// d is gone or</span></span><br><span class="line">                        d == dp ||                 <span class="comment">// d is off list or</span></span><br><span class="line">                        !d.isCancelled() ||        <span class="comment">// d not cancelled or</span></span><br><span class="line">                        (d != t &amp;&amp;                 <span class="comment">// d not tail and</span></span><br><span class="line">                         (dn = d.next) != <span class="keyword">null</span> &amp;&amp;  <span class="comment">//   has successor</span></span><br><span class="line">                         dn != d &amp;&amp;                <span class="comment">//   that is on list</span></span><br><span class="line">                         dp.casNext(d, dn)))       <span class="comment">// d unspliced</span></span><br><span class="line">                        casCleanMe(dp, <span class="keyword">null</span>);</span><br><span class="line">                    <span class="keyword">if</span> (dp == pred)</span><br><span class="line">                        <span class="keyword">return</span>;      <span class="comment">// s is already saved node</span></span><br><span class="line">                &#125; <span class="keyword">else</span> <span class="keyword">if</span> (casCleanMe(<span class="keyword">null</span>, pred))</span><br><span class="line">                    <span class="keyword">return</span>;          <span class="comment">// Postpone cleaning s</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果<code>head.next</code>已经取消，则清除。</li>
+<li><code>tail</code>发生并发修改，则更新。</li>
+<li>如果本次需要删除的参数<code>s</code>结点不是<code>tail</code>，则删除返回。</li>
+<li>如果<code>cleanMe</code>为<code>null</code>，则将<code>pred</code>保存到<code>cleanMe</code>。</li>
+<li>否则删除上一次记录的<code>cleanMe.next</code>。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/17/java-SynchronousQueue-3/" data-toggle="tooltip" data-placement="top"
+                           title="SynchronousQueue精读(3)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/17/java-SynchronousQueue-1/" data-toggle="tooltip" data-placement="top"
+                           title="SynchronousQueue精读(1)-stack">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Qnode"><span class="toc-text">Qnode</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Qnode和Snode区别"><span class="toc-text">Qnode和Snode区别</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#casNext"><span class="toc-text">casNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#casItem"><span class="toc-text">casItem()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tryCancel"><span class="toc-text">tryCancel()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isCancelled"><span class="toc-text">isCancelled()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isOffList"><span class="toc-text">isOffList()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Queue成员变量和方法"><span class="toc-text">Queue成员变量和方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法-1"><span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#advanceHead"><span class="toc-text">advanceHead()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#advanceTail"><span class="toc-text">advanceTail()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#casCleanMe"><span class="toc-text">casCleanMe()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#transfer"><span class="toc-text">transfer()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#awaitFulfill"><span class="toc-text">awaitFulfill()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#clean"><span class="toc-text">clean()</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

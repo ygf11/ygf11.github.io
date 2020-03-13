@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ThreadPoolExecutor精读(4)-关闭线程池｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/30/java-ThreadPoolExecutor-4/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ThreadPoolExecutor精读(4)-关闭线程池</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-30
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ThreadPoolExecutor精读(4)-关闭线程池
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>ThreadPoolExecutor</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>三个中断工作线程的方法</li>
+<li><code>tryTerminate()</code></li>
+<li><code>shutdown()</code></li>
+<li><code>shutdownNow()</code></li>
+</ol>
+<h2 id="三个中断工作线程的方法"><a href="#三个中断工作线程的方法" class="headerlink" title="三个中断工作线程的方法"></a>三个中断工作线程的方法</h2><ol>
+<li><code>interruptIdleWorkers(boolean onlyOne)</code></li>
+<li><code>interruptIdleWorkers()</code></li>
+<li><code>interruptWorkers()</code></li>
+</ol>
+<h3 id="interruptIdleWorkers-boolean-onlyOne"><a href="#interruptIdleWorkers-boolean-onlyOne" class="headerlink" title="interruptIdleWorkers(boolean onlyOne)"></a>interruptIdleWorkers(boolean onlyOne)</h3><p><code>interruptIdleWorkers(boolean onlyOne)</code>方法用于中断空闲线程。<br>这个方法有一个参数<code>boolean onlyOne</code>：</p>
+<ol>
+<li>当<code>onlyOne</code>为<code>true</code>时，则只中断工作线程集合中一个空闲线程就可以了。</li>
+<li>当<code>onlyOne</code>为<code>false</code>时，则需要中断工作线程集合中所有的空闲线程。</li>
+</ol>
+<p>另外这里工作线程空闲的意义表示为：<br>工作线程没有使用自己的<code>非重入独占锁加锁</code>，即只有在执行任务前才加锁，在任务完成后释放锁。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">interruptIdleWorkers</span><span class="params">(<span class="keyword">boolean</span> onlyOne)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">this</span>.mainLock;</span><br><span class="line">        mainLock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 遍历worker set </span></span><br><span class="line">            <span class="keyword">for</span> (Worker w : workers) &#123;</span><br><span class="line">                Thread t = w.thread;</span><br><span class="line">		<span class="comment">// t没有被中断 且没有上锁</span></span><br><span class="line">		<span class="keyword">if</span> (!t.isInterrupted() &amp;&amp; w.tryLock()) &#123;</span><br><span class="line">                    <span class="keyword">try</span> &#123;</span><br><span class="line">			<span class="comment">// 中断</span></span><br><span class="line">                        t.interrupt();</span><br><span class="line">                    &#125; <span class="keyword">catch</span> (SecurityException ignore) &#123;</span><br><span class="line">                    &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                        w.unlock();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 如果只中断其中一个</span></span><br><span class="line">                <span class="keyword">if</span> (onlyOne)</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            mainLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>获取<code>mainLock</code>主要是是为了并发访问<code>workers</code>这个非线程安全的集合类对象(<code>set</code>)。</li>
+<li>遍历整个工作线程集合，如果<code>tryLock()</code>成功，则说明空闲，则中断。</li>
+<li>如果<code>onlyOne = ture</code>，则只中断其中一个空闲线程然后释放锁返回。</li>
+<li>否则，中断所有的空闲线程成返回。</li>
+</ol>
+<p><code>interruptIdleWorkers(true)</code>在<code>tryTerminate()</code>中被调用，调用的条件为线程池的状态为<code>SHUTDOWN</code>或者<code>STOP</code>，且任务队列为<code>空</code>，但是<code>工作线程数</code>不为<code>0</code>。</p>
+<h3 id="interruptIdleWorkers"><a href="#interruptIdleWorkers" class="headerlink" title="interruptIdleWorkers()"></a>interruptIdleWorkers()</h3><p><code>interruptIdleWorkers()</code>用于中断所有空闲线程，在<code>shutdown()</code>中被调用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">interruptIdleWorkers</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        interruptIdleWorkers(<span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="interruptWorkers"><a href="#interruptWorkers" class="headerlink" title="interruptWorkers()"></a>interruptWorkers()</h3><p><code>interruptWorkers()</code>方法用于中断所有线程，包括正在执行任务的非空闲线程。在<code>shutdownNow()</code>中被调用，是一种比较粗暴的关闭方法。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">interruptWorkers</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">this</span>.mainLock;</span><br><span class="line">        mainLock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">for</span> (Worker w : workers) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">                    w.thread.interrupt();</span><br><span class="line">                &#125; <span class="keyword">catch</span> (SecurityException ignore) &#123;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            mainLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>获取<code>mainLock</code>，目的是为了线程安全的访问<code>workers</code>集合。</li>
+<li>遍历集合中的每一个工作线程，中断每一个工作线程。</li>
+<li>释放<code>mainLock</code>，然后返回。</li>
+</ol>
+<h3 id="中断方法总结"><a href="#中断方法总结" class="headerlink" title="中断方法总结"></a>中断方法总结</h3><ol>
+<li>空闲工作线程，即没有获取自身<code>非重入独占锁</code>的线程。</li>
+<li><code>interruptIdleWorkers(true)</code>方法，在<code>tryTerminate()</code>中使用，中断一个空闲工作线程。</li>
+<li><code>interruptIdleWorkers()</code>方法，在<code>shutdown()</code>中使用，中断所有空闲工作线程。</li>
+<li><code>interruptWorkers()</code>方法，在<code>shutdownNow()</code>中使用，中断所有工作线程。</li>
+</ol>
+<h2 id="tryTerminate"><a href="#tryTerminate" class="headerlink" title="tryTerminate()"></a>tryTerminate()</h2><p><code>tryTerminate()</code>方法尝试将线程池的状态由<code>SHUTDOWN</code>、<code>STOP</code>转化为<code>TIDYING</code>，最后转化为<code>TERMINATE</code>。转化的条件为</p>
+<ol>
+<li>线程池当前状态为<code>SHUTDOWN</code>，任务队列和线程池都为空。</li>
+<li>线程池当前状态为<code>STOP</code>，且线程池为空。</li>
+</ol>
+<p><code>tryTerminate()</code>首先将所有过程放在一个<code>for</code>死循环中，然后分为两个过程：</p>
+<ol>
+<li>线程池状态判断，是否符合转换状态的条件。</li>
+<li>进行状态转换，以及<code>hook</code>方法<code>terminate()</code>的调用。</li>
+</ol>
+<h3 id="线程池状态判断"><a href="#线程池状态判断" class="headerlink" title="线程池状态判断"></a>线程池状态判断</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="comment">// 1 </span></span><br><span class="line">       <span class="keyword">int</span> c = ctl.get();</span><br><span class="line"><span class="keyword">if</span> (isRunning(c) ||</span><br><span class="line">           runStateAtLeast(c, TIDYING) ||</span><br><span class="line">           (runStateOf(c) == SHUTDOWN &amp;&amp; ! workQueue.isEmpty()))</span><br><span class="line">           <span class="keyword">return</span>;</span><br><span class="line"><span class="comment">// 2</span></span><br><span class="line"><span class="keyword">if</span> (workerCountOf(c) != <span class="number">0</span>) &#123; <span class="comment">// Eligible to terminate</span></span><br><span class="line">    interruptIdleWorkers(ONLY_ONE);<span class="comment">// 唤醒一个在队列阻塞的线程</span></span><br><span class="line">           <span class="keyword">return</span>;</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p>这个过程分为两部分：</p>
+<ol>
+<li>线程池当前状态的判断，有三种情况：<br>1.1 如果线程池当前状态为<code>RUNNING</code>，则直接返回。即不能转换线程池状态。<br>1.2 如果线程池状态 &gt;= TIDYING，则说明有其它线程正在执行<code>tryTerminate()</code>将线程池状态置为<code>TIDYING</code>，或者已经置为<code>TERMINATED</code>返回。则返回，因为状态已经为<code>TERMINATE</code>。<br>1.3 如果线程池状态为<code>SHUTDOWN</code>，且任务队列不为空，则说明不能设置为<code>TIDYING</code>，所以返回。</li>
+<li>如果线程池中的工作线程数量不为0，则中断一个空闲线程。因为调用<code>tryTerminate()</code>方法是为了使线程池终止，而中断空闲线程可以加速这个过程。</li>
+</ol>
+<h3 id="进行状态转换"><a href="#进行状态转换" class="headerlink" title="进行状态转换"></a>进行状态转换</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">this</span>.mainLock;</span><br><span class="line">mainLock.lock();</span><br><span class="line"><span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (ctl.compareAndSet(c, ctlOf(TIDYING, <span class="number">0</span>))) &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            terminated();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            ctl.set(ctlOf(TERMINATED, <span class="number">0</span>));</span><br><span class="line">            termination.signalAll();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    mainLock.unlock();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>获取<code>mainLock</code>独占锁，目的为了在将线程池状态设置为<code>TERMINATED</code>后，唤醒<code>termination</code>条件队列中等待线程关闭完成的线程。<code>termination</code>条件队列是与<code>mainLock</code>关联的。</li>
+<li>将线程池状态设置为<code>TIDYING</code>。</li>
+<li>调用<code>hook</code>方法<code>terminate()</code>。</li>
+<li><code>terminate()</code>方法返回后，将线程池状态置为<code>TERMINATED</code>。并且唤醒所有在<code>termination</code>条件队列上的线程。</li>
+<li>释放<code>mainLock</code>，返回。</li>
+</ol>
+<h2 id="shutdown"><a href="#shutdown" class="headerlink" title="shutdown()"></a>shutdown()</h2><p><code>shutdown()</code>：是一种温和的关闭线程池的方式。调用<code>shutdown()</code>后，不再接收新的任务，但是会将任务队列中剩下的任务执行完。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">shutdown</span><span class="params">()</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 获取mainLock 进行统计</span></span><br><span class="line">        <span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">this</span>.mainLock;</span><br><span class="line">        mainLock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 检查权限</span></span><br><span class="line">            checkShutdownAccess();</span><br><span class="line">	    <span class="comment">// 将状态置为SHUTDOWN</span></span><br><span class="line">            advanceRunState(SHUTDOWN);</span><br><span class="line"></span><br><span class="line">	    <span class="comment">// 将所有空闲worker线程中断状态置为true</span></span><br><span class="line">            interruptIdleWorkers();</span><br><span class="line">            onShutdown(); <span class="comment">// hook for ScheduledThreadPoolExecutor</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            mainLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">// 尝试将线程池状态置为terminate</span></span><br><span class="line">        tryTerminate();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>首先获取<code>mainLock</code>。</li>
+<li>将线程池状态设置为<code>SHUTDOWN</code>。</li>
+<li>中断所有空闲线程，使空闲线程退出终止。</li>
+<li>调用<code>hook</code>方法<code>onShutdown()</code>。</li>
+<li>释放<code>mainLock</code>。</li>
+<li>调用<code>tryTerminate();</code>尝试设置线程池状态为<code>TERMINATE</code>，因为有可能现在线程池和任务队列都为空。</li>
+</ol>
+<h2 id="shutdownNow"><a href="#shutdownNow" class="headerlink" title="shutdownNow()"></a>shutdownNow()</h2><p><code>shutdownNow()</code>：是一种比较粗暴的关闭线程池的方法。调用完<code>shutdownNow()</code>之后，不再接收新的任务，而且<code>shutdownNow()</code>方法会将任务队列清空。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> List&lt;Runnable&gt; <span class="title">shutdownNow</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        List&lt;Runnable&gt; tasks;</span><br><span class="line">	<span class="comment">// 获取mainLock 进行统计工作</span></span><br><span class="line">        <span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">this</span>.mainLock;</span><br><span class="line">        mainLock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 检查权限</span></span><br><span class="line">            checkShutdownAccess();</span><br><span class="line">	    <span class="comment">//将状态置为STOP</span></span><br><span class="line">            advanceRunState(STOP);</span><br><span class="line">	    <span class="comment">//将所有worker线程中断状态置为true</span></span><br><span class="line">            interruptWorkers();</span><br><span class="line">	    <span class="comment">// 将任务从任务队列中移除</span></span><br><span class="line">            tasks = drainQueue();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            mainLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">        tryTerminate();</span><br><span class="line">        <span class="keyword">return</span> tasks;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>获取<code>mainLock</code>。</li>
+<li>将线程池状态设置为<code>STOP</code>。</li>
+<li>中做所有工作线程。</li>
+<li>清空任务队列，并且以这些未完成的任务作为返回值。</li>
+<li>释放<code>mainLock</code>。</li>
+<li>调用<code>tryTerminate();</code>尝试设置线程池状态为<code>TERMINATE</code>，因为有可能工作线程此时都已经终止。</li>
+<li>返回未完成任务的<code>List</code>。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/09/14/java-hashtable/" data-toggle="tooltip" data-placement="top"
+                           title="java-hashtable">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/29/java-ThreadPoolExecutor-3/" data-toggle="tooltip" data-placement="top"
+                           title="ThreadPoolExecutor精读(3)-提交任务">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#三个中断工作线程的方法"><span class="toc-text">三个中断工作线程的方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#interruptIdleWorkers-boolean-onlyOne"><span class="toc-text">interruptIdleWorkers(boolean onlyOne)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#interruptIdleWorkers"><span class="toc-text">interruptIdleWorkers()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#interruptWorkers"><span class="toc-text">interruptWorkers()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#中断方法总结"><span class="toc-text">中断方法总结</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tryTerminate"><span class="toc-text">tryTerminate()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#线程池状态判断"><span class="toc-text">线程池状态判断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#进行状态转换"><span class="toc-text">进行状态转换</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#shutdown"><span class="toc-text">shutdown()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#shutdownNow"><span class="toc-text">shutdownNow()</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

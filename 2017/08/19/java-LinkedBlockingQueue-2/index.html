@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        LinkedBlockingQueue精读(2)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/19/java-LinkedBlockingQueue-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>LinkedBlockingQueue精读(2)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-19
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            LinkedBlockingQueue精读(2)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>LinkedBlockingQueue</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>unlink()</code></li>
+<li><code>remove()</code></li>
+<li>遍历</li>
+<li>线程安全性和可见性</li>
+</ol>
+<h2 id="unlink"><a href="#unlink" class="headerlink" title="unlink()"></a>unlink()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 移除p</span></span><br><span class="line">    <span class="function"><span class="keyword">void</span> <span class="title">unlink</span><span class="params">(Node&lt;E&gt; p, Node&lt;E&gt; trail)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// assert isFullyLocked();</span></span><br><span class="line">        <span class="comment">// p.next is not changed, to allow iterators that are</span></span><br><span class="line">        <span class="comment">// traversing p to maintain their weak-consistency guarantee.</span></span><br><span class="line">        p.item = <span class="keyword">null</span>;</span><br><span class="line">	<span class="comment">// 移除p</span></span><br><span class="line">	trail.next = p.next;</span><br><span class="line">	<span class="comment">// 更新last</span></span><br><span class="line">        <span class="keyword">if</span> (last == p)</span><br><span class="line">            last = trail;</span><br><span class="line">	<span class="comment">// 如果原来队列是满的 则唤醒生产者</span></span><br><span class="line">	<span class="keyword">if</span> (count.getAndDecrement() == capacity)</span><br><span class="line">            notFull.signal();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>p</code>指向需要删除的结点，<code>trial</code>指向<code>p</code>的前驱。删除步骤如下：</p>
+<ol>
+<li>将<code>p.item</code>置为<code>null</code>。</li>
+<li>在队列中删除<code>p</code>，<code>trail.next = p.next;</code>。</li>
+<li>如果<code>p == last</code>，则需要将<code>last</code>更新为<code>p</code>的前驱<code>trial</code>。</li>
+<li>更新<code>count</code>，并且如果<code>更新之前</code>发现<code>队列是满的</code>则<code>唤醒</code>阻塞的<code>生产者线程</code>。</li>
+</ol>
+<p>注意：在<code>unlink()</code>调用时，必须获取两个<code>独占锁</code>。<code>unlink()</code>之后被移除的结点的<code>next</code>域还是指向队列中的结点，这个和<code>dequeue()</code>方法不一样。所以需要在迭代过程中做处理。</p>
+<h2 id="remove"><a href="#remove" class="headerlink" title="remove()"></a>remove()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">remove</span><span class="params">(Object o)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (o == <span class="keyword">null</span>) <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">	<span class="comment">// 获取两个锁</span></span><br><span class="line">        fullyLock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 遍历队列</span></span><br><span class="line">            <span class="keyword">for</span> (Node&lt;E&gt; trail = head, p = trail.next;</span><br><span class="line">                 p != <span class="keyword">null</span>;</span><br><span class="line">                 trail = p, p = p.next) &#123;</span><br><span class="line">                <span class="keyword">if</span> (o.equals(p.item)) &#123;</span><br><span class="line">                    unlink(p, trail);</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            fullyUnlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>remove(o)</code>方法删除队列中的<code>o</code>对象所在的结点，如果有多个，则删除最前面那个。<br>删除步骤如下：</p>
+<ol>
+<li>如果<code>o == null</code>，返回<code>false</code>。</li>
+<li>获取两个独占锁。</li>
+<li>遍历队列，寻找目标<code>o</code>所在的结点，以及它的前驱(<code>因为链表删除需要前驱</code>)。</li>
+<li>如果遍历完，还未找到，则返回<code>false</code>。</li>
+<li>找到了，则调用<code>unlink()</code>方法删除。</li>
+<li>最后释放锁。</li>
+</ol>
+<h2 id="遍历"><a href="#遍历" class="headerlink" title="遍历"></a>遍历</h2><p>与其它可以迭代的并发容器一样，<code>LinkedBlockingQueue</code>获得的<code>迭代器</code>也是<code>弱一致性</code>的。<br><code>弱一致性</code>的意思：<code>迭代器</code>遍历的数据，是在它创建那时刻队列的数据。但是由于并发修改的存在，可能利用迭代器进行遍历时有部分修改了，所以遍历的就与迭代器创建时刻的队列有点不一样。</p>
+<h3 id="迭代器成员变量"><a href="#迭代器成员变量" class="headerlink" title="迭代器成员变量"></a>迭代器成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="comment">// 当前结点</span></span><br><span class="line">       <span class="keyword">private</span> Node&lt;E&gt; current;</span><br><span class="line"><span class="comment">// 上一次返回的item对应的结点 </span></span><br><span class="line">       <span class="keyword">private</span> Node&lt;E&gt; lastRet;</span><br><span class="line"><span class="comment">// 当前结点对应的item</span></span><br><span class="line">       <span class="keyword">private</span> E currentElement;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>current</code>：当前结点。</li>
+<li><code>lastRet</code>：上一次遍历的结点。</li>
+<li><code>currentElement</code>：<code>current</code>结点的数据。</li>
+</ol>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Itr() &#123;</span><br><span class="line">           fullyLock();</span><br><span class="line">           <span class="keyword">try</span> &#123;</span><br><span class="line">               current = head.next;</span><br><span class="line">               <span class="keyword">if</span> (current != <span class="keyword">null</span>)</span><br><span class="line">                   currentElement = current.item;</span><br><span class="line">           &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">               fullyUnlock();</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p>获取两个锁之后，初始化参数：</p>
+<ol>
+<li><code>current = head.next</code>。</li>
+<li><code>currentElement = current.item</code>。</li>
+</ol>
+<h3 id="hasNext"><a href="#hasNext" class="headerlink" title="hasNext()"></a>hasNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> current != <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>current</code>是否为<code>null</code>。即是否没有遍历完。</p>
+<h3 id="nextNode"><a href="#nextNode" class="headerlink" title="nextNode()"></a>nextNode()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 返回下一个存活的结点</span></span><br><span class="line">        <span class="function"><span class="keyword">private</span> Node&lt;E&gt; <span class="title">nextNode</span><span class="params">(Node&lt;E&gt; p)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                Node&lt;E&gt; s = p.next;</span><br><span class="line">                <span class="keyword">if</span> (s == p)</span><br><span class="line">                    <span class="keyword">return</span> head.next;</span><br><span class="line">                <span class="keyword">if</span> (s == <span class="keyword">null</span> || s.item != <span class="keyword">null</span>)</span><br><span class="line">                    <span class="keyword">return</span> s;</span><br><span class="line">                p = s;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>nextNode()</code>返回<code>p</code>的下一个存活的结点。<br>这里会出现两种特殊的情况：</p>
+<ol>
+<li><code>p.next == p</code>，这个在前面调用<code>poll()</code>、<code>poll(timeout，unit)</code>和<code>take()</code>方法中的<code>dequeue()</code>中会出现。此时返回<code>head.next</code>。</li>
+<li><code>s.item == null</code>，这中操作之前调用<code>remove()</code>方法会出现。遍历下一个。</li>
+</ol>
+<h3 id="next"><a href="#next" class="headerlink" title="next()"></a>next()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">next</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            fullyLock();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">		<span class="comment">// 遍历前 没有做检查</span></span><br><span class="line">                <span class="keyword">if</span> (current == <span class="keyword">null</span>)</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">                E x = currentElement;</span><br><span class="line">                lastRet = current;</span><br><span class="line">                current = nextNode(current);</span><br><span class="line">                currentElement = (current == <span class="keyword">null</span>) ? <span class="keyword">null</span> : current.item;</span><br><span class="line">                <span class="keyword">return</span> x;</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                fullyUnlock();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>返回当前的<code>item</code>。调用<code>nextNode()</code>进行更新。</p>
+<h3 id="remove-1"><a href="#remove-1" class="headerlink" title="remove()"></a>remove()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 删除上一个遍历的结点 单链表的删除 时间复杂度o(n) 因为要先遍历获取前驱</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (lastRet == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException();</span><br><span class="line">            fullyLock();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                Node&lt;E&gt; node = lastRet;</span><br><span class="line">                lastRet = <span class="keyword">null</span>;</span><br><span class="line">                <span class="keyword">for</span> (Node&lt;E&gt; trail = head, p = trail.next;</span><br><span class="line">                     p != <span class="keyword">null</span>;</span><br><span class="line">                     trail = p, p = p.next) &#123;</span><br><span class="line">                    <span class="keyword">if</span> (p == node) &#123;</span><br><span class="line">                        unlink(p, trail);</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                fullyUnlock();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>移除上一个返回的<code>item</code>所对应的<code>Node</code>对象。<br>由于删除<code>node</code>，需要目标结点的前驱，所以需要先遍历找到前驱。</p>
+<h2 id="线程安全和可见性"><a href="#线程安全和可见性" class="headerlink" title="线程安全和可见性"></a>线程安全和可见性</h2><ol>
+<li>线程安全由两个独占锁，以及<code>count</code>变量，<code>CAS</code>实现原子性。</li>
+<li>可见性。对于<code>相同</code>的操作之间的<code>可见性</code>由它们的锁保证。<br>对于不同操作，由于持有的锁不是同一把锁，所以独占锁不能保证可见性。这里使用<code>volatile</code>实现可见性。由于<code>count</code>变量实际内部维护的<code>vlaue</code>是一个<code>volatile</code>变量，而每次<code>count.get()</code>是一个<code>volatile</code>读，且<code>cas</code>更新<code>count</code>变量时，<code>cas</code>同时具有<code>volatile</code>读和<code>volatile</code>写的内存语义。所以把更新操作放在<code>volatile</code>读和<code>cas</code>更新之间，是可以保证可见性的。</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">       .</span><br><span class="line">       .</span><br><span class="line">       .</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// volatile读</span></span><br><span class="line">            <span class="keyword">if</span> (count.get() &lt; capacity) &#123;</span><br><span class="line">	        <span class="comment">// 更新操作</span></span><br><span class="line">	        enqueue(node);		</span><br><span class="line">		<span class="comment">// cas操作 volatile写</span></span><br><span class="line">		c = count.getAndIncrement();</span><br><span class="line">	    &#125;		</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       	    .</span><br><span class="line">	    .</span><br><span class="line">	    .</span><br><span class="line">	    <span class="comment">// volatile 读</span></span><br><span class="line">            <span class="keyword">if</span> (count.get() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">	        <span class="comment">// 队列更新</span></span><br><span class="line">                x = dequeue();</span><br><span class="line">		<span class="comment">// cas操作 volatile写	</span></span><br><span class="line">                c = count.getAndDecrement();</span><br><span class="line">       	     &#125;</span><br><span class="line">       	     .</span><br><span class="line">       	     .</span><br><span class="line">       	     .</span><br></pre></td></tr></table></figure>
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/21/java-AQS-C-1/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(1)-Snode">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/19/java-LinkedBlockingQueue-1/" data-toggle="tooltip" data-placement="top"
+                           title="LinkedBlockingQueue精读(1)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#unlink"><span class="toc-text">unlink()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#remove"><span class="toc-text">remove()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#遍历"><span class="toc-text">遍历</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#迭代器成员变量"><span class="toc-text">迭代器成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hasNext"><span class="toc-text">hasNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nextNode"><span class="toc-text">nextNode()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#next"><span class="toc-text">next()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#remove-1"><span class="toc-text">remove()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#线程安全和可见性"><span class="toc-text">线程安全和可见性</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

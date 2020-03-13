@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        AQS精读(1)-Snode｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/21/java-AQS-C-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>AQS精读(1)-Snode</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-21
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            AQS精读(1)-Snode
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>AbstractQueuedSynchronizer</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>特征</li>
+<li><code>Snode</code>结点两种模式</li>
+<li><code>Snode</code>5种状态</li>
+<li><code>Snode</code>类方法</li>
+</ol>
+<h2 id="特征"><a href="#特征" class="headerlink" title="特征"></a>特征</h2><ol>
+<li><code>ASQ</code>是一个抽象类，<code>volatile</code>变量<code>state</code>的含义由子类定义。</li>
+<li><code>AQS</code>支持<code>两种模式</code>的结点，<code>Exclusive</code>和<code>Shared</code>。<code>Exclusive</code>的结点每次<code>release()</code>只可能唤醒队列中的一个结点(线程)，而<code>Shared</code>的结点每次<code>releaseShared()</code>方法，可能会传播唤醒多个(<code>只要资源足够</code>)。一般只使用其中一种模式的结点，当然也有例外<code>ReentrantReadWriteLock</code>类使用了两种结点。</li>
+<li><code>AQS</code>实现了<code>Condition</code>内部类，类似于<code>Synchronized</code>的<code>object.wait()</code>和<code>object.notify()</code>机制。即添加了<code>Condition</code>队列。</li>
+<li>序列化这个类的对象，只会将<code>state</code>变量写入文件，即sync队列中的结点不会序列化。</li>
+<li>为了使用<code>AQS</code>类，实现自己的同步工具，必须实现<code>tryXXX()</code>、<code>tryReleaseXXX()</code>和<code>isHeldExclusively()</code>，5种方法，默认这5种方法抛出<code>UnsupportedOperationException</code>异常。</li>
+<li>在<code>tryXXX()</code>中可以定义这个同步工具的公平性。公平性是很有意义的，可以避免<code>线程饥饿</code>的出现。</li>
+<li><code>AQS</code>中的<code>sync</code>等待队列是<code>CLH</code>队列的变种，区别和相同点如下：<br>7.1 <code>CLH</code>队列使用的是自旋锁，而<code>AQS</code>中使用的<code>LockSupport.park()</code>进行阻塞。<br>7.2 <code>CLH</code>使用单链表，而<code>AQS</code>中使用双链表，增加<code>prev</code>指针主要是为了移除队列中<code>取消</code>结点(<code>中断 取消 超时</code>的结点线程)。<br>7.3 <code>CLH</code>结点自旋阻塞在当前结点的前驱，而<code>AQS</code>阻塞结点需要由前驱唤醒。<br>7.3 <code>AQS</code>中<code>head</code>指向的是一个傀儡结点。不代表阻塞的线程。</li>
+</ol>
+<p>最后由<code>AQS</code>实现的同步工具，如下：</p>
+<ol>
+<li><code>ReentrantLock</code></li>
+<li><code>ReentrantReadWriteLock</code></li>
+<li><code>CountDownLatch</code></li>
+<li><code>Semphore</code></li>
+</ol>
+<h2 id="Snode结点2种模式"><a href="#Snode结点2种模式" class="headerlink" title="Snode结点2种模式"></a>Snode结点2种模式</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> Node SHARED = <span class="keyword">new</span> Node(); <span class="comment">// 标志为共享模式的结点       </span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> Node EXCLUSIVE = <span class="keyword">null</span>;   <span class="comment">// 标志为独占模式的结点</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>EXCLUSIVE</code>：独占模式的结点。</li>
+<li><code>SHARED</code>：共享模式的结点。</li>
+</ol>
+<p><code>Snode</code>结点模式由<code>nextWaiter</code>域确定。<br><code>nextWaiter</code>还作为<code>Condition</code>队列的<code>next</code>指针。因为<code>Condition</code>只在所有结点是<code>EXCLUSIVE</code>的情况下使用，即独占锁下使用，所以不会出现混淆。分为两种情况：</p>
+<ol>
+<li><code>SHARED</code>：则共享模式的结点。</li>
+<li>其它：则为独占模式的结点。<code>Condition</code>队列的结点和<code>null</code>的结点都是独占结点。</li>
+</ol>
+<p><code>ReentrantLock</code>中使用了<code>EXCLUSIVE</code>的结点。<br><code>CountDownLatch</code>和<code>Semphore</code>中使用了<code>SHARED</code>的结点。<br><code>ReentrantReadWriteLock</code>中同时使用了<code>EXCLUSIVE</code>和<code>SHARED</code>两种结点。</p>
+<h2 id="Snode结点5种状态"><a href="#Snode结点5种状态" class="headerlink" title="Snode结点5种状态"></a>Snode结点5种状态</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> CANCELLED =  <span class="number">1</span>; <span class="comment">// 标志是取消结点(中断、超时)        </span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> SIGNAL    = -<span class="number">1</span>; <span class="comment">// 标志唤醒后继结点        </span></span><br><span class="line">    <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> CONDITION = -<span class="number">2</span>; <span class="comment">// 标志结点在condition队列中等待 </span></span><br><span class="line"> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> PROPAGATE = -<span class="number">3</span>;<span class="comment">// 标志下一次acquireShared()中PROPAAGAET应该被传播</span></span><br><span class="line"><span class="comment">// 0  初始状态</span></span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>CANCELLED</code>：将结点状态标志为取消(中断或者超时产生)，会在过程中被清除出队列。是4种状态中唯一一个<code>正数</code>。</li>
+<li><code>SIGNAL</code>：如果结点状态为<code>SIGNAL</code>，则表示这个结点的<code>后继</code>需要由其<code>唤醒</code>。</li>
+<li><code>CONDITION</code>：如果结点状态为<code>CONDITION</code>，则表示这个结点处于<code>CONDITION</code>队列中。</li>
+<li><code>PROPAGATE</code>：在<code>doReleaseShared()</code>方法中将<code>head</code>的状态设置为PROPAGATE<code>，然后唤醒后继。然后后继获取锁后，自己取代为</code>head<code>，如果原来</code>head<code>状态为</code>PROPAGATE<code>，则再次调用</code>doReleaseShared()<code>，唤醒后继，设置</code>head<code>状态为</code>PROPAGATE<code>，直到资源不足。所以</code>PROPAGATE<code>实现了共享模式下一次</code>releaseShared()<code>唤醒多个结点(</code>线程`)。</li>
+<li><code>0</code>：结点创建时的初始状态，也是将结点从<code>CONDITION</code>队列转移到<code>sync</code>队列后的状态。</li>
+</ol>
+<p><code>Snode</code>类结点的状态由<code>waiterState</code>确定。</p>
+<h3 id="Snode成员变量"><a href="#Snode成员变量" class="headerlink" title="Snode成员变量"></a>Snode成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="keyword">volatile</span> <span class="keyword">int</span> waitStatus;</span><br><span class="line"><span class="keyword">volatile</span> Node prev;</span><br><span class="line"><span class="keyword">volatile</span> Node next;</span><br><span class="line"><span class="keyword">volatile</span> Thread thread;</span><br><span class="line">Node nextWaiter;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>waitStatus</code>：前面5种状态的一种。初始为<code>0</code>。</li>
+<li><code>prev</code>：指向该结点在<code>sync</code>队列中的前驱。由于<code>sync</code>队列中的结点需要由前驱唤醒，所以需要找到第一个<code>非取消</code>的<code>前驱</code>结点将状态置为<code>SIGNAL</code>，所以添加了<code>prev</code>指针。跳过取消结点。</li>
+<li><code>next</code>：指向当前结点在<code>sync队列</code>中的后继。当调用<code>release()</code>方法时，唤醒后继。</li>
+<li><code>thread</code>：表示本次获取锁的线程。结点持有这个线程对象，主要为了<code>park()</code>和<code>unpark()</code>线程。</li>
+<li><code>nextWaiter</code>：表示<code>独占模式</code>还是<code>共享模式</code>的结点(或者是<code>CONDITION</code>队列的结点)。</li>
+</ol>
+<p>由上面可以看出<code>前面四个</code>变量都是<code>volatile</code>的，只有最后一个不是<code>volatile</code>变量。<br>前面四个需要<code>volatile</code>修饰的原因：<br>前面四个<code>waitStatus</code>、<code>prev</code>、<code>next</code>和<code>thread</code>在加锁阶段和解锁阶段都要用到，<br>为了线程间看到的状态是一致的所以使用了<code>volatile</code>。</p>
+<p><code>nextWaiter</code>不需要<code>volatile</code>修饰的原因：<br>因为<code>nextWaiter</code>会在将结点插入<code>CONDITION</code>队列和将结点从<code>CONDITION</code>队列转移<code>sync</code>队列时被用到。而这两个操作，都是持有锁的状态下获取的，所以有锁的内存语义，具有可见性，所以不需要使用<code>volatile</code>修饰。</p>
+<h2 id="Snode类的方法"><a href="#Snode类的方法" class="headerlink" title="Snode类的方法"></a>Snode类的方法</h2><h3 id="isShared"><a href="#isShared" class="headerlink" title="isShared()"></a>isShared()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isShared</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> nextWaiter == SHARED;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>判断结点是否是<code>共享模式</code>的结点。<code>nextWaiter != SHARED</code>的结点都是<code>独占结点</code>。</p>
+<h3 id="predecessor"><a href="#predecessor" class="headerlink" title="predecessor()"></a>predecessor()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> Node <span class="title">predecessor</span><span class="params">()</span> <span class="keyword">throws</span> NullPointerException </span>&#123;</span><br><span class="line">            Node p = prev;</span><br><span class="line">            <span class="keyword">if</span> (p == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">            <span class="keyword">else</span></span><br><span class="line">                <span class="keyword">return</span> p;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>返回<code>当前结点</code>的<code>前驱</code>，如果前驱为<code>null</code>，则抛出<code>NullPointerException</code>异常。</p>
+<h3 id="Node-Thread-thread-Node-node"><a href="#Node-Thread-thread-Node-node" class="headerlink" title="Node(Thread thread, Node node)"></a>Node(Thread thread, Node node)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Node(Thread thread, Node mode) &#123;     <span class="comment">// Used by addWaiter</span></span><br><span class="line">            <span class="keyword">this</span>.nextWaiter = mode;</span><br><span class="line">            <span class="keyword">this</span>.thread = thread;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>指定<code>thread</code>和<code>mode</code>的构造方法。用于<code>sync</code>队列的结点。</p>
+<h3 id="Node-Thread-thread-int-waitStatus"><a href="#Node-Thread-thread-int-waitStatus" class="headerlink" title="Node(Thread thread, int waitStatus)"></a>Node(Thread thread, int waitStatus)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Node(Thread thread, <span class="keyword">int</span> waitStatus) &#123; <span class="comment">// Used by Condition</span></span><br><span class="line">            <span class="keyword">this</span>.waitStatus = waitStatus;</span><br><span class="line">            <span class="keyword">this</span>.thread = thread;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>指定<code>thread</code>和<code>waitStatus</code>的构造方法。用户<code>CONDITION</code>队列的结点。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/21/java-AQS-C-2/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(2)-sync队列">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/19/java-LinkedBlockingQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="LinkedBlockingQueue精读(2)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#特征"><span class="toc-text">特征</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Snode结点2种模式"><span class="toc-text">Snode结点2种模式</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Snode结点5种状态"><span class="toc-text">Snode结点5种状态</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Snode成员变量"><span class="toc-text">Snode成员变量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Snode类的方法"><span class="toc-text">Snode类的方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#isShared"><span class="toc-text">isShared()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#predecessor"><span class="toc-text">predecessor()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Node-Thread-thread-Node-node"><span class="toc-text">Node(Thread thread, Node node)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Node-Thread-thread-int-waitStatus"><span class="toc-text">Node(Thread thread, int waitStatus)</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

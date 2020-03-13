@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ConcurrentHashMap精读(1)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/13/java-ConcurrentHashMap-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ConcurrentHashMap精读(1)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-13
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ConcurrentHashMap精读(1)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p><code>ConcurrentHashMap</code>源码基于jdk-1.6</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>默认参数</li>
+<li><code>HashEntry</code>类</li>
+<li><code>Segment</code>类</li>
+<li>散列方法</li>
+<li><code>null</code>key和<code>null</code>value</li>
+<li><code>put()</code>和<code>get()</code>过程</li>
+</ol>
+<h2 id="默认参数"><a href="#默认参数" class="headerlink" title="默认参数"></a>默认参数</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> DEFAULT_INITIAL_CAPACITY = <span class="number">16</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">float</span> DEFAULT_LOAD_FACTOR = <span class="number">0.75f</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> DEFAULT_CONCURRENCY_LEVEL = <span class="number">16</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAXIMUM_CAPACITY = <span class="number">1</span> &lt;&lt; <span class="number">30</span>;</span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> MAX_SEGMENTS = <span class="number">1</span> &lt;&lt; <span class="number">16</span>; <span class="comment">// slightly conservative</span></span><br><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> RETRIES_BEFORE_LOCK = <span class="number">2</span>;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>DEFAULT_INITIAL_CAPACITY</code>：每一个<code>segment</code>中的<code>table</code>数组的默认长度，16。</li>
+<li><code>DEFAULT_LOAD_FACTOR</code>：每个<code>segment</code>的默认负载因子，0.75。</li>
+<li><code>DEFAULT_CONCURRENCY_LEVEL</code>：默认线程并发度，即有多少<code>segment</code>。默认16段。</li>
+<li><code>MAXIMUM_CAPACITY</code>：每个<code>segment</code>的最大容量，默认<code>2^30</code>。</li>
+<li><code>MAX_SEGMENTS</code>：<code>segment</code>数组最大的长度，为<code>2^16</code>。</li>
+<li><code>RETRIES_BEFORE_LOCK</code>：在<code>size()</code>和<code>containValue()</code>中使用。默认这个数值为<code>2</code>，表示在<code>size()</code>和<code>containValue()</code>中最多遍历的次数，查过这个次数则加锁遍历。因为<code>ConcurrentHashMap</code>是线程安全的，所以在当前线程执行<code>size()</code>或者<code>containValue()</code>方法，其它线程也在操作这个<code>map</code>，造成<code>map</code>状态变化。</li>
+</ol>
+<h2 id="HashEntry"><a href="#HashEntry" class="headerlink" title="HashEntry"></a>HashEntry</h2><p><code>成员变量</code>：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">final</span> K key;</span><br><span class="line"><span class="keyword">final</span> <span class="keyword">int</span> hash;</span><br><span class="line"><span class="keyword">volatile</span> V value;</span><br><span class="line"><span class="keyword">final</span> HashEntry&lt;K,V&gt; next;</span><br></pre></td></tr></table></figure>
+<p>我们可以看出除了<code>value</code>之外都是，都是<code>final</code>变量，而<code>value</code>是<code>volatile</code>修饰的。原因如下：</p>
+<ol>
+<li><code>next</code>域为<code>final</code>的，主要为了<code>put()</code>在表头插入，这样在两个线程<code>get()</code>和<code>put()</code>才不会出错。</li>
+<li><code>value</code>域为<code>volatile</code>的，主要为了在一个线程<code>put()</code>或者<code>replace()</code>修改了<code>value</code>之后，<code>get()</code>线程马上可见。</li>
+</ol>
+<h2 id="Segment"><a href="#Segment" class="headerlink" title="Segment"></a>Segment</h2><p><code>Segment</code>类继承自<code>ReentractLock</code>，所以<code>Segment</code>也称为分段锁。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="class"><span class="keyword">class</span> <span class="title">Segment</span>&lt;<span class="title">K</span>,<span class="title">V</span>&gt; <span class="keyword">extends</span> <span class="title">ReentrantLock</span> <span class="keyword">implements</span> <span class="title">Serializable</span></span></span><br></pre></td></tr></table></figure>
+<h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// volatile</span></span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">volatile</span> <span class="keyword">int</span> count;</span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">int</span> modCount;</span><br><span class="line"><span class="comment">// 阀值</span></span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">int</span> threshold;</span><br><span class="line"><span class="comment">// table</span></span><br><span class="line">       <span class="keyword">transient</span> <span class="keyword">volatile</span> HashEntry&lt;K,V&gt;[] table;</span><br><span class="line"><span class="comment">// 负载因子</span></span><br><span class="line">       <span class="keyword">final</span> <span class="keyword">float</span> loadFactor;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>count</code>：当前<code>segment</code>中<code>entry</code>的数量，是一个<code>volatile</code>变量。每次在<code>get()</code>最开始都会读取<code>count</code>，在<code>put()</code>释放锁之前，都会写入<code>count</code>。所以这构造<code>volatile</code>变量的先行性原则。</li>
+<li><code>modCount</code>：记录这个段修改的操作次数。</li>
+<li><code>threshold</code>：<code>segment</code>的阀值，在每次<code>put</code>开始时，如果<code>count++ &gt; threshold</code>，则进行扩容。<code>threshold = table.length * loadFactor</code>。</li>
+<li><code>table[]</code>：哈希数组，是一个<code>volatile</code>类型的引用，主要为了多线程的可见性。</li>
+<li><code>loadFactor</code>：负载因子。</li>
+</ol>
+<h2 id="散列方法"><a href="#散列方法" class="headerlink" title="散列方法"></a>散列方法</h2><p>每个<code>HashEntry</code>对象中存放都是<code>key.hashCode()</code>再散列后的值。<br><code>ConcurrentHashMap</code>中将散列后的高<code>32 - segmentShift</code>位作为<code>segment</code>数组的索引，将低<code>segmentShift &amp; (table.length - 1)</code>作为<code>segment.table</code>数组的索引。<br>关于散列方法，<code>ConcurrentHashMap</code>使用的<code>hash()</code>方法是<code>Wang/Jenkins hash</code>方法的变种：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">hash</span><span class="params">(<span class="keyword">int</span> h)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// Spread bits to regularize both segment and index locations,</span></span><br><span class="line">        <span class="comment">// using variant of single-word Wang/Jenkins hash.</span></span><br><span class="line">        h += (h &lt;&lt;  <span class="number">15</span>) ^ <span class="number">0xffffcd7d</span>;</span><br><span class="line">        h ^= (h &gt;&gt;&gt; <span class="number">10</span>);</span><br><span class="line">        h += (h &lt;&lt;   <span class="number">3</span>);</span><br><span class="line">        h ^= (h &gt;&gt;&gt;  <span class="number">6</span>);</span><br><span class="line">        h += (h &lt;&lt;   <span class="number">2</span>) + (h &lt;&lt; <span class="number">14</span>);</span><br><span class="line">        <span class="keyword">return</span> h ^ (h &gt;&gt;&gt; <span class="number">16</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>Wang/Jenkins hash</code>具有两个特点：</p>
+<ol>
+<li>雪崩性：每改变<code>key.hashCode()</code>中的任意一位，都会造成至少一半以上的位发生变化。</li>
+<li>可逆性。</li>
+</ol>
+<p>这里使用了<code>雪崩性</code>，使散列更加均匀。下面是确定在<code>segment</code>数组下标：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">put</span><span class="params">(K key, V value)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (value == <span class="keyword">null</span>)</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">        <span class="keyword">int</span> hash = hash(key.hashCode());</span><br><span class="line">        <span class="keyword">return</span> segmentFor(hash).put(key, hash, value, <span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// 确定在segment数组的下标</span></span><br><span class="line">    <span class="function"><span class="keyword">final</span> Segment&lt;K,V&gt; <span class="title">segmentFor</span><span class="params">(<span class="keyword">int</span> hash)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> segments[(hash &gt;&gt;&gt; segmentShift) &amp; segmentMask];</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>下面是确定在<code>table</code>数组下标的过程：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// hash 是调用`hash()`方法之后的数值</span></span><br><span class="line"><span class="keyword">int</span> index = hash &amp; (tab.length - <span class="number">1</span>);</span><br></pre></td></tr></table></figure>
+<h2 id="null-key和null-value"><a href="#null-key和null-value" class="headerlink" title="null key和null value"></a>null key和null value</h2><p><code>ConcurrentHashMap</code>，插入<code>key = null</code>或者<code>value = null</code>时，都会抛出<code>NullPointerException</code>异常。<br>以<code>put()</code>为例：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> V <span class="title">put</span><span class="params">(K key, V value)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (value == <span class="keyword">null</span>)<span class="comment">//1</span></span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">        <span class="keyword">int</span> hash = hash(key.hashCode());<span class="comment">//2</span></span><br><span class="line">        <span class="keyword">return</span> segmentFor(hash).put(key, hash, value, <span class="keyword">false</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>value = null</code>，则抛出<code>NullPointerException</code>异常。</li>
+<li><code>hash(key.hashCode())</code>：当<code>key = null</code>时，调用<code>key.hashCode()</code>抛出<code>NullPointerException</code>异常。</li>
+</ol>
+<h2 id="put-和get-过程"><a href="#put-和get-过程" class="headerlink" title="put()和get()过程"></a>put()和get()过程</h2><p><code>put()</code>和<code>get()</code>过程很类似：</p>
+<ol>
+<li>检查<code>key == null</code> 或者 <code>value == null</code>。</li>
+<li>计算<code>key</code>的<code>hash()</code>再散列值，调用<code>hash(key.hashCode())</code>。</li>
+<li>确定<code>segment</code>数组的<code>segment</code>，然后调用<code>segment.put()</code>或者<code>segment.get()</code>。</li>
+<li>进入<code>segment</code>方法，最后确定<code>segment</code>中<code>table</code>数组的项。</li>
+<li>各自的操作。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/13/java-ConcurrentHashMap-2/" data-toggle="tooltip" data-placement="top"
+                           title="ConcurrentHashMap精读(2)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/12/java-WeakHashMap-2/" data-toggle="tooltip" data-placement="top"
+                           title="WeakHashMap(精读)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#默认参数"><span class="toc-text">默认参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HashEntry"><span class="toc-text">HashEntry</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Segment"><span class="toc-text">Segment</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#散列方法"><span class="toc-text">散列方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#null-key和null-value"><span class="toc-text">null key和null value</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#put-和get-过程"><span class="toc-text">put()和get()过程</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

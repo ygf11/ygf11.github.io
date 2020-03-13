@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        AQS精读(4)-共享模式｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/22/java-AQS-C-4/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>AQS精读(4)-共享模式</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-22
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            AQS精读(4)-共享模式
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>AbstractQueuedSynchronizer</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>共享模式与独占模式在实现上的区别</li>
+<li><code>setHeadAndPropagate()</code> </li>
+<li>设置状态为<code>PROPAGATE</code>的原因</li>
+<li>忽略中断的<code>acquireShared()</code></li>
+<li>释放共享状态<code>releaseShared()</code></li>
+<li>响应中断<code>acquireSharedInterruptibly()</code></li>
+<li>限时等待<code>tryAcquireSharedNanos()</code></li>
+</ol>
+<h2 id="共享模式与独占模式在实现上的区别"><a href="#共享模式与独占模式在实现上的区别" class="headerlink" title="共享模式与独占模式在实现上的区别"></a>共享模式与独占模式在实现上的区别</h2><p>总共有两个区别：</p>
+<ol>
+<li>在<code>sync</code>队列中获取成功获取锁时，<code>独占</code>模式调用<code>setHead()</code>方法将自身设置为<code>head</code>结点。而共享模式有所不同，调用的是<code>setHeadAndPropagate()</code>，这个方法不仅将当前结点设置为<code>head</code>，还会唤醒后继结点。这样做的原因是，共享模式一次释放资源，可能会有多个阻塞线程被唤醒，并且成功获得资源。或者短时间内多个线程同时释放资源，则需要唤醒多个阻塞线程。</li>
+<li>在释放资源的方法中，<code>独占模式</code>直接唤醒<code>head</code>的后继就完成了，因为每次最多只有一个线程释放资源，独占锁的特点。而共享模式的<code>releaseShared()</code>需要考虑一次有多个线程释放的情况，如果在一个很短的事件内都唤醒<code>head</code>的后继，则可能多次唤醒同一个线程结点，这样不符合语义。所以<code>releaseShared()</code>方法，在第一次释放资源时，将<code>head</code>的状态置为<code>0</code>，然后唤醒后继，如果同时有多个线程释放资源，则把<code>head</code>的状态设置为<code>PROPAGATE</code>，循环直到第一次唤醒的线程结点获取锁为止。</li>
+</ol>
+<h2 id="setHeadAndPropagate"><a href="#setHeadAndPropagate" class="headerlink" title="setHeadAndPropagate()"></a>setHeadAndPropagate()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">setHeadAndPropagate</span><span class="params">(Node node, <span class="keyword">int</span> propagate)</span> </span>&#123;</span><br><span class="line">        Node h = head; <span class="comment">// Record old head for check below</span></span><br><span class="line">        setHead(node);</span><br><span class="line">        <span class="comment">// h是上一个 head 在独占方式中</span></span><br><span class="line">	<span class="comment">// setHead()方法将head状态为原来结点的状态 signal 0</span></span><br><span class="line">	<span class="comment">// 而head在doReleaseShared() 如果head状态为0 则置为propagate 这就是区别</span></span><br><span class="line">	<span class="comment">// h.waitStatus == 0 不传播</span></span><br><span class="line">	<span class="comment">// h.waitStatus &lt; 0</span></span><br><span class="line">	<span class="comment">// 1. signal 可以直接唤醒  但是需要</span></span><br><span class="line">	<span class="comment">// 2. propagate </span></span><br><span class="line">	<span class="comment">// 3. condition(共享模式下没有condition)</span></span><br><span class="line">	<span class="comment">// h == null？</span></span><br><span class="line">        <span class="keyword">if</span> (propagate &gt; <span class="number">0</span> || h == <span class="keyword">null</span> || h.waitStatus &lt; <span class="number">0</span>) &#123;</span><br><span class="line">            Node s = node.next;</span><br><span class="line">	    <span class="comment">// 判断是shared模式</span></span><br><span class="line">            <span class="keyword">if</span> (s == <span class="keyword">null</span> || s.isShared())</span><br><span class="line">                doReleaseShared();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>首先把<code>head</code>置为<code>node</code>，然后主要是第二个步骤：</p>
+<ol>
+<li>参数<code>propagate</code>为之前<code>tryAcquireShared()</code>返回的值，表示现在还可以获取的资源数。所以如果<code>propagate &gt; 0</code>，则表示还存在多个资源，所以可以唤醒后继(如果后继是共享模式的结点)。这里<code>propagate</code>参数的意义和<code>head</code>状态为<code>PROPAGATE</code>一样，表示都要唤醒后继。</li>
+<li><code>h.waitStatus &lt; 0</code>：表示更新前的<code>head</code>状态为<code>PROPAGATE</code>，因为<code>SIGNAL</code>不可能出现(调用<code>releaseShared()</code>)，则与<code>1</code>唤醒后继结点(如果后继是共享模式的结点)。</li>
+</ol>
+<p>这里<code>propagate</code>参数与<code>h.waitStatue</code>为<code>PROPAGATE</code>是一致的。</p>
+<ol>
+<li><code>propagate</code>表示一个线程一次释放了多个资源，或者累加释放了多个资源。所以需要唤醒多个阻塞线程获取资源。</li>
+<li><code>h.waitStatue</code>为<code>PROPAGATE</code>表示有多个线程在同一时刻释放资源，而只唤醒了一个后继结点。由于资源足够，所以需要唤醒多个阻塞线程获取资源。</li>
+</ol>
+<h2 id="设置状态为PROPAGATE的原因"><a href="#设置状态为PROPAGATE的原因" class="headerlink" title="设置状态为PROPAGATE的原因"></a>设置状态为<code>PROPAGATE</code>的原因</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doReleaseShared</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// 放在for循环里面 主要为了放置其它结点的插入</span></span><br><span class="line">        <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">            Node h = head;</span><br><span class="line">            <span class="keyword">if</span> (h != <span class="keyword">null</span> &amp;&amp; h != tail) &#123;</span><br><span class="line">                <span class="keyword">int</span> ws = h.waitStatus;</span><br><span class="line">		<span class="comment">// head的状态为signal</span></span><br><span class="line">		<span class="keyword">if</span> (ws == Node.SIGNAL) &#123;</span><br><span class="line">		    <span class="comment">// 将head状态置为0</span></span><br><span class="line">                    <span class="keyword">if</span> (!compareAndSetWaitStatus(h, Node.SIGNAL, <span class="number">0</span>))</span><br><span class="line">                        <span class="keyword">continue</span>;            <span class="comment">// loop to recheck cases</span></span><br><span class="line">                    unparkSuccessor(h);<span class="comment">//唤醒后继</span></span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// head的状态不是signal 则将head状态置为PROPAGATE</span></span><br><span class="line">                <span class="keyword">else</span> <span class="keyword">if</span> (ws == <span class="number">0</span> &amp;&amp;</span><br><span class="line">                         !compareAndSetWaitStatus(h, <span class="number">0</span>, Node.PROPAGATE))</span><br><span class="line">                    <span class="keyword">continue</span>;                <span class="comment">// loop on failed CAS</span></span><br><span class="line">            &#125;</span><br><span class="line">	    <span class="comment">// head 变化 则继续循环</span></span><br><span class="line">            <span class="keyword">if</span> (h == head)                   <span class="comment">// loop if head changed</span></span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>doReleaseShared()</code>在<code>releaseShared()</code>方法中被调用，分为两种情况：</p>
+<ol>
+<li>在<code>head</code>的后继被唤醒后，后继取代<code>head</code>这一段时间内，只有唤醒后继这一个线程释放资源，此时不用设置<code>head</code>结点状态为<code>PROPAGATE</code>，意味只有一个线程释放资源，唤醒一个后继就够了。</li>
+<li>在<code>head</code>的后继被唤醒后，后继取代<code>head</code>这一段时间内，有多个线程释放了资源，按照<code>sync</code>队列的设计，应该唤醒多个阻塞结点线程，但是这种情况只能唤醒一个线程，所以其它释放线程需要自旋等待。这里把head状态设置为<code>PROPAGATE</code>，等待后继唤醒队列中后面的线程。</li>
+</ol>
+<h2 id="忽略中断的acquireShared"><a href="#忽略中断的acquireShared" class="headerlink" title="忽略中断的acquireShared()"></a>忽略中断的acquireShared()</h2><h3 id="acquireShared"><a href="#acquireShared" class="headerlink" title="acquireShared()"></a>acquireShared()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">acquireShared</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (tryAcquireShared(arg) &lt; <span class="number">0</span>)</span><br><span class="line">            doAcquireShared(arg);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>acquireShared()</code>方法，在忽略中断的情况下，获取锁：</p>
+<ol>
+<li>如果<code>tryAcquireShared(arg) &gt;= 0</code>，则表示获取成功。</li>
+<li>如果<code>tryAcquireShared(arg) &lt; 0</code>，则表示获取失败，调用<code>doAcquireShared(arg);</code>，则<code>sync</code>队列中获取。</li>
+</ol>
+<h3 id="doAcquireShared"><a href="#doAcquireShared" class="headerlink" title="doAcquireShared()"></a>doAcquireShared()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doAcquireShared</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> Node node = addWaiter(Node.SHARED);</span><br><span class="line">        <span class="keyword">boolean</span> failed = <span class="keyword">true</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">boolean</span> interrupted = <span class="keyword">false</span>;</span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">		<span class="comment">// 获取前驱</span></span><br><span class="line">                <span class="keyword">final</span> Node p = node.predecessor();</span><br><span class="line">		<span class="comment">// 前驱为head时  尝试获取锁</span></span><br><span class="line">                <span class="keyword">if</span> (p == head) &#123;</span><br><span class="line">		    <span class="comment">// &gt;= 0 成功</span></span><br><span class="line">                    <span class="keyword">int</span> r = tryAcquireShared(arg);</span><br><span class="line">                    <span class="keyword">if</span> (r &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="comment">// 设置head = node 并且状态置为传播状态 r &gt; 0 则唤醒后继共享结点 </span></span><br><span class="line">			<span class="comment">// 与独占模式获取不同在于 设置完head之后 可能要继续唤醒后继 </span></span><br><span class="line">			setHeadAndPropagate(node, r);</span><br><span class="line">                        p.next = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">			<span class="comment">// 忽略中断</span></span><br><span class="line">                        <span class="keyword">if</span> (interrupted)</span><br><span class="line">                            selfInterrupt();</span><br><span class="line">                        failed = <span class="keyword">false</span>;</span><br><span class="line">                        <span class="keyword">return</span>;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 当前驱结点没有置为signal时 不能阻塞</span></span><br><span class="line">		<span class="comment">// shouldParkAfterFailedAcquire()分为三种情况</span></span><br><span class="line">		<span class="comment">// 1. 当前驱结点状态为signal时 则可以阻塞</span></span><br><span class="line">		<span class="comment">// 2. 当前驱结点状态为取消时 则寻找新的前驱 置其状态为signal 然后重试 因为前驱变化过了 所以可能可以直接获取锁</span></span><br><span class="line">		<span class="comment">// 3. 当前驱结点状态为0 (初始状态) 或者 PROPAGATE时，置状态为signal 然后重试</span></span><br><span class="line">                <span class="keyword">if</span> (shouldParkAfterFailedAcquire(p, node) &amp;&amp;</span><br><span class="line">                    parkAndCheckInterrupt())</span><br><span class="line">                    interrupted = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (failed)</span><br><span class="line">                cancelAcquire(node);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>与独占锁中的<code>acquireQueued()</code>方法类似，唯一的不同在于<code>setHeadAndPropgate()</code>。<br><code>setHeadAndPropgate()</code>可以做到一次释放资源，多个阻塞线程被唤醒，并且成功获取资源。</p>
+<h2 id="释放共享状态releaseShared"><a href="#释放共享状态releaseShared" class="headerlink" title="释放共享状态releaseShared()"></a>释放共享状态releaseShared()</h2><h3 id="releaseShared"><a href="#releaseShared" class="headerlink" title="releaseShared()"></a>releaseShared()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">releaseShared</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// tryReleaseShared(arg)返回true 则唤醒CLH队列中的所有线程</span></span><br><span class="line">	<span class="keyword">if</span> (tryReleaseShared(arg)) &#123;</span><br><span class="line">            doReleaseShared();</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果<code>tryReleaseShared(arg)</code>释放成功，则调用<code>doReleaseShared();</code>。返回<code>true</code>。</li>
+<li>否则，返回<code>false</code>。</li>
+</ol>
+<p>由上面<code>doReleaseShared()</code>可知，处理了多个线程在同一时刻一起释放资源的情况。<br>独占模式没有这种情况，因为在一个时刻只有一个线程持有或者会释放独占锁。</p>
+<h2 id="响应中断acquireSharedInterruptibly"><a href="#响应中断acquireSharedInterruptibly" class="headerlink" title="响应中断acquireSharedInterruptibly()"></a>响应中断acquireSharedInterruptibly()</h2><p><code>acquireSharedInterruptibly()</code>是响应中断的获取共享锁的方法。</p>
+<h2 id="限时等待tryAcquireSharedNanos"><a href="#限时等待tryAcquireSharedNanos" class="headerlink" title="限时等待tryAcquireSharedNanos()"></a>限时等待tryAcquireSharedNanos()</h2><p><code>tryAcquireSharedNanos()</code>方法，不仅提供限时等待获取，还可以响应中断。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/23/java-AQS-C-5/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(5)-CONDITION">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/21/java-AQS-C-3/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(3)-独占模式">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#共享模式与独占模式在实现上的区别"><span class="toc-text">共享模式与独占模式在实现上的区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#setHeadAndPropagate"><span class="toc-text">setHeadAndPropagate()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#设置状态为PROPAGATE的原因"><span class="toc-text">设置状态为PROPAGATE的原因</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#忽略中断的acquireShared"><span class="toc-text">忽略中断的acquireShared()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#acquireShared"><span class="toc-text">acquireShared()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doAcquireShared"><span class="toc-text">doAcquireShared()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#释放共享状态releaseShared"><span class="toc-text">释放共享状态releaseShared()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#releaseShared"><span class="toc-text">releaseShared()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#响应中断acquireSharedInterruptibly"><span class="toc-text">响应中断acquireSharedInterruptibly()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#限时等待tryAcquireSharedNanos"><span class="toc-text">限时等待tryAcquireSharedNanos()</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

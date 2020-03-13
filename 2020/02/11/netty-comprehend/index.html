@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        关于netty的理解｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2020/02/11/netty-comprehend/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>关于netty的理解</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2020-02-11
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            关于netty的理解
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <h1 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h1><ol>
+<li>首先简单介绍<code>netty</code>是什么?</li>
+<li><code>netty</code>的优势?</li>
+<li><code>netty</code>并发处理</li>
+<li>线程阻塞是什么?</li>
+<li><code>netty</code>内存管理</li>
+</ol>
+<p>这篇文章是基于我对<code>netty</code>的理解，来剖析一些<code>netty</code>的实现特点.</p>
+<h1 id="netty是什么"><a href="#netty是什么" class="headerlink" title="netty是什么?"></a>netty是什么?</h1><p>要理解<code>netty</code>，首先需要回答<code>netty</code>是什么? 如果要用一句简单的话来描述<code>netty</code>，我觉得可以这样描述:</p>
+<ul>
+<li><code>netty</code>是一个<code>高性能</code>、<code>方便开发</code>网络应用的<code>Java</code>网络库。 </li>
+</ul>
+<p>两个关键词是:</p>
+<ol>
+<li><code>高性能</code>。</li>
+<li>方便开发。</li>
+</ol>
+<h1 id="netty的优势"><a href="#netty的优势" class="headerlink" title="netty的优势"></a>netty的优势</h1><p>在<code>Java</code>中说起网络开发，我们马上就会想到<code>bio</code>和<code>nio</code>这种基础的网络<code>api</code>，那么<code>netty</code>与这些<code>api</code>又有什么不同呢？使用这些基础<code>api</code>开发过网络应用的朋友应该知道，想要基于此开发好一个项目是比较困难的一件事情，开发者需要关注更多的细节:</p>
+<ol>
+<li>怎么样处理并发</li>
+<li>内存管理</li>
+<li>最后才是业务逻辑状态机的实现</li>
+</ol>
+<p><code>netty</code>就是为了解决细节:</p>
+<ol>
+<li><code>netty</code>有自己的线程模型.</li>
+<li><code>netty</code>有自己的内存管理(减少<code>gc</code>的压力).</li>
+</ol>
+<p>那么现在我们可以理解<code>netty</code>为什么能够方便开发者了，因为使用了<code>netty</code>，我们可以更加专注于业务逻辑的开发.</p>
+<h1 id="netty并发处理"><a href="#netty并发处理" class="headerlink" title="netty并发处理"></a>netty并发处理</h1><p>在多<code>cpu</code>的条件下，任务的并发执行可以显著的提高效率。但是当并发任务之间有依赖关系时，执行效率就没有像理想中的那么高了。<br>想象下，现在有<code>4</code>个<code>任务</code>，<code>4</code>个<code>cpu</code>:</p>
+<ol>
+<li><code>4</code>个任务完全独立，每个<code>cpu</code>执行一个任务，那么这个<code>4</code>个<code>任务</code>的执行时间就是<code>耗时</code>最长那个任务的执行时间。</li>
+<li><code>4</code>个任务，任务与任务之间有依赖关系，此时使用每个<code>cpu</code>执行一个任务，会出现某个任务未完成但是<code>cpu</code>闲置(任务暂停)的情况。</li>
+</ol>
+<p>可以看出来，第一种情况是并发的理想情况。<br>如果第二种情况中的依赖关系非常复杂，那么则这样的场景有点不适合多核并发。</p>
+<p>回到<code>netty</code>的并发处理，<code>网络库</code>的<code>业务逻辑处理</code>简单来讲就是跟<code>远程通信端</code>进行数据<code>交换</code>。我们可以<code>主动</code>跟多个<code>远程端</code>建立连接，也可以<code>被动</code>接收多个连接。<br>    关于并发的<code>粒度</code>，有一点我们可以确定，连接和连接之间是<code>独立</code>的，那么每个连接都可以进行理想的并发处理(情况1)，所以:</p>
+<ol>
+<li>为每个连接都创建一个线程。</li>
+<li>一个连接的所有逻辑都是在一个线程上执行。</li>
+</ol>
+<p>这种抽象<code>咋一看</code>蛮符合<code>情况1</code>的描述，但是由于实际上服务器<code>cpu</code>个数有限，所以不可能为每个连接创建一个<code>线程</code>(即分配一个<code>cpu</code>)，实际的做法是:</p>
+<ol>
+<li>一个线程可以执行多个连接的业务逻辑。</li>
+<li>一个连接的所有逻辑都是在一个线程上执行。</li>
+</ol>
+<p>那么现在这种做法就可以充分利用<code>cpu</code>资源了。</p>
+<p>在<code>netty</code>中，一个线程资源称为<code>EventLoop</code>，一个与远程通信端的连接称为<code>Channel</code>，线程模型可以描述为：</p>
+<ol>
+<li>每个<code>Channel</code>都只会绑定到一个<code>EventLoop</code>。</li>
+<li>一个<code>EventLoop</code>可以绑定多个<code>Channel</code>。</li>
+</ol>
+<p><code>netty</code>官方对它线程模型的描述是非阻塞，正是因为有<code>非阻塞</code>的<code>线程模型</code>才造就了<code>netty</code>的高性能。</p>
+<h1 id="线程阻塞是什么？"><a href="#线程阻塞是什么？" class="headerlink" title="线程阻塞是什么？"></a>线程阻塞是什么？</h1><h2 id="JVM中线程阻塞的实现"><a href="#JVM中线程阻塞的实现" class="headerlink" title="JVM中线程阻塞的实现"></a>JVM中线程阻塞的实现</h2><p><code>netty</code>把自己的线程设计成非阻塞的，那么下面探究下线程阻塞的原理。前面提到如果并发任务间有依赖关系，那么它们的执行就需要<code>等待</code>和<code>唤醒</code>操作，<code>Java</code>中的线程同步用的是:</p>
+<ul>
+<li><code>synchronized</code>、<code>object.wait()</code>和<code>object.signalAll()</code>方法。</li>
+<li><code>ReentrantLock</code>和对应的条件队列。</li>
+</ul>
+<p>跟踪<code>open-jdk</code>的源码可以得出线程阻塞是通过<code>pthread_mutex_t</code>和<code>pthread_cont_t</code>实现的，阻塞等待的特点是：</p>
+<ul>
+<li>线程的阻塞和唤醒需要经历内核态和用户态的切换，所以这两个操作会使用很多的<code>cpu</code>时钟周期。</li>
+<li>线程在阻塞之后，将放弃<code>cpu</code>的占用直到被唤醒。</li>
+</ul>
+<h2 id="线程阻塞的危害"><a href="#线程阻塞的危害" class="headerlink" title="线程阻塞的危害"></a>线程阻塞的危害</h2><p>根据线程阻塞的原理，接下来可以看看阻塞带来的危害。场景描述:</p>
+<ul>
+<li>执行环境有4个<code>cpu</code>，并且创建<code>4</code>个线程执行任务。</li>
+<li>任务执行中会发生阻塞，且任务源源不绝。</li>
+</ul>
+<p>在这样的环境下执行任务，会产生一个问题，那就是:</p>
+<ul>
+<li>线程在阻塞后会放弃占用<code>cpu</code>，导致任务队列不断变长的同时，有<code>cpu</code>资源被闲置。</li>
+</ul>
+<p>那么在任务满载的情况下，怎么样才能不让<code>cpu</code>闲置呢？ 答案：</p>
+<ul>
+<li>创建足够多的线程，当有些线程阻塞时，多于的线程可以占用这些阻塞线程放弃的<code>cpu</code>。</li>
+</ul>
+<p>但是这样做的坏处也是显而易见的:</p>
+<ul>
+<li>在4个<code>cpu</code>的条件下，本来之前用<code>4</code>个线程的资源就可以跑满<code>cpu</code>，现在需要创建<code>2倍</code>甚至<code>3倍</code>的线程资源才能跑满<code>cpu</code>，造成内存等其他资源的浪费。</li>
+<li>线程阻塞和唤醒需要消耗大量<code>cpu</code>时钟周期，这意味着<code>cpu</code>资源的浪费，这些因上下文切换而使用的<code>cpu</code>时间本可以用于真正的任务执行。</li>
+</ul>
+<h1 id="netty内存管理"><a href="#netty内存管理" class="headerlink" title="netty内存管理"></a>netty内存管理</h1><p>既然<code>Jvm</code>已经有了<code>gc</code>，为什么<code>netty</code>还要实现自己的内存管理呢？ 答案是为了提升性能。</p>
+<p>首先回顾下<code>Java</code>中堆内存分配的过程:</p>
+<ol>
+<li>优先从年轻代分配内存。<br>1.1 如果满足分配要求(大小足够)，则进行分配。<br>1.2 如果不满足分配，则进行一次<code>minor gc</code>。</li>
+<li>如果<code>minor gc</code>后，满足分配则进行分配，否则进行一次<code>full gc</code>。</li>
+</ol>
+<p>对于网络应用这种需要频繁申请和释放内存的场景，每一次都从<code>JVM</code>堆中<code>申请</code>显然是不合适的。所以为了减少每次内存申请的时间消耗(cpu)，<code>netty</code>在初始化时先占用了一块内存，通过<code>引用计数法</code>进行本地管理。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/02/18/proxy-comprehend/" data-toggle="tooltip" data-placement="top"
+                           title="代理实现分析">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2018/05/24/LinkedTransferQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="LinkedTransferQueue(2)-成员变量和核心方法">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#netty是什么"><span class="toc-text">netty是什么?</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#netty的优势"><span class="toc-text">netty的优势</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#netty并发处理"><span class="toc-text">netty并发处理</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#线程阻塞是什么？"><span class="toc-text">线程阻塞是什么？</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#JVM中线程阻塞的实现"><span class="toc-text">JVM中线程阻塞的实现</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#线程阻塞的危害"><span class="toc-text">线程阻塞的危害</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#netty内存管理"><span class="toc-text">netty内存管理</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

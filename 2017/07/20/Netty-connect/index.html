@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Netty-客户端connect过程｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/07/20/Netty-connect/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Netty-客户端connect过程</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-07-20
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Netty-客户端connect过程
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <h2 id="echo代码"><a href="#echo代码" class="headerlink" title="echo代码"></a>echo代码</h2><p>这里用的是<code>netty.example</code>中的<code>echo</code>代码进行分析</p>
+<h2 id="SocketChannel和ServerSocketChannel-active的条件"><a href="#SocketChannel和ServerSocketChannel-active的条件" class="headerlink" title="SocketChannel和ServerSocketChannel active的条件"></a>SocketChannel和ServerSocketChannel active的条件</h2><ol>
+<li>服务器端的<code>ServerSocketChannel</code>，<code>active</code>的条件为成功调用<code>channel.bind()</code>方法。</li>
+<li>服务器端的<code>SocketChannel</code>，<code>active</code>的条件为成功调用<code>channel.accept()</code>方法。</li>
+<li>客户端的<code>SocketChannel</code>， <code>active</code>的条件为当在<code>selector</code>上检测到<code>connect</code>事件后，成功调用<code>channel.finishConnect()</code>方法之后。</li>
+</ol>
+<h2 id="客户端connect过程-与-服务器bind过程的区别"><a href="#客户端connect过程-与-服务器bind过程的区别" class="headerlink" title="客户端connect过程 与 服务器bind过程的区别"></a>客户端connect过程 与 服务器bind过程的区别</h2><ol>
+<li>在<code>initAndRegister()</code>方法中，客户端创建的是<code>NioSocketChannel</code>，而服务器创建的是<code>NioServerSocketChannel</code>。</li>
+<li>客户端创建的<code>NioSocketChannel</code>的<code>readInterestOp</code>为<code>OP_READ</code>，而服务器创建的<code>NioServerSocketChannel</code>的<code>readInterestOp</code>为<code>OP_ACCEPT</code>。</li>
+<li>在<code>init()</code>方法<code>addLast()</code>初始化<code>ChannelHandler</code>时，客户端没有进行包装，而是直接<code>addLast(handler)</code>。而服务器需要将<code>handler</code>和<code>ServerBootstrapAcceptor</code>两个放在一个<code>channelInitialzer</code>的<code>initHandler()</code>方法中。因为客户端只有初始化客户端的<code>channelHandler</code>，而服务器不仅需要初始化<code>Accept</code>线程的<code>ChannelHandler</code>，而且还需要为每个连接到客户端的<code>channel</code>初始化<code>ChannelHandler</code>(<code>ServerBootstrapAcceptor</code>)。</li>
+<li>在客户端调用<code>connect</code>方法进行三次握手连接，它的<code>channel active</code>的条件是在<code>selector</code>上检测到<code>connect</code>事件就绪，然后调用<code>channel.finishConnect()</code>方法后，才使<code>channel</code>处于<code>active</code>状态。然后在<code>register0()</code>方法中传播<code>active</code>事件。</li>
+</ol>
+<h2 id="connect-初始化过程"><a href="#connect-初始化过程" class="headerlink" title="connect 初始化过程"></a>connect 初始化过程</h2><ol>
+<li>从<code>AbstractBootStrap.connect()</code>方法开始</li>
+<li>进入<code>initAndRegister()</code>方法，首先新建一个<code>NioSocketChannel</code>，然后调用<code>init()</code>方法初始化<code>channel</code></li>
+<li>还是在<code>initAndRegister()</code>方法中，调用<code>config().group().register(channel)</code>方法将<code>channel</code>注册到一个<code>eventLoopGroup</code>中的<code>eventloop</code>中。注册过程中会将<code>register()</code>任务添加到<code>选中的eventloop</code>的任务队列中，并且创建新线程开始执行任务。</li>
+<li>在主线程中，将<code>connect()</code>任务添加到<code>选中的eventloop</code>的任务队列中。</li>
+<li>那个被<code>channel</code>注册的<code>eventloop</code>执行任务队列的任务。</li>
+</ol>
+<h2 id="任务队列的任务"><a href="#任务队列的任务" class="headerlink" title="任务队列的任务"></a>任务队列的任务</h2><p>客户端初始化，<code>eventloop</code>任务队列中总共执行两个任务：</p>
+<ol>
+<li><code>register</code>任务</li>
+<li><code>connect</code>任务</li>
+</ol>
+<h2 id="ChannelHandler"><a href="#ChannelHandler" class="headerlink" title="ChannelHandler"></a>ChannelHandler</h2><p>在客户端的初始化中，会出现两个种<code>handler</code>：</p>
+<ol>
+<li><code>handler</code>，是一个<code>ChannelInitializer</code>，里面包含的真正的<code>EchoClientHandler</code>。这里记为<code>标号1</code>。</li>
+<li><code>EchoClientHandler</code>，处理事件的<code>ChannelHandler</code>。这里记为<code>标号2</code>。</li>
+</ol>
+<h3 id="init"><a href="#init" class="headerlink" title="init()"></a>init()</h3><p><code>init()</code>方法目的是初始化<code>channel</code>，包含两个方面：</p>
+<ol>
+<li><code>channel</code>的<code>option</code>和<code>attr</code>初始化。</li>
+<li>向<code>channel</code>的<code>pipeline</code>对象，插入<code>handler</code>。</li>
+</ol>
+<p>关于<code>channel</code>的初始化，这里和<code>Server</code>端不一样：<br>添加的不是一个新创建的<code>ChannelInitializer</code>，而是直接在配置时候确定的<code>handler</code>，</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">b.group(group)</span><br><span class="line">        .</span><br><span class="line">        .<span class="comment">// </span></span><br><span class="line">        .handler(<span class="keyword">new</span> ChannelInitializer&lt;SocketChannel&gt;() &#123;</span><br><span class="line">            <span class="meta">@Override</span></span><br><span class="line">            <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">initChannel</span><span class="params">(SocketChannel ch)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">                ChannelPipeline p = ch.pipeline();</span><br><span class="line">                p.addLast(<span class="keyword">new</span> EchoClientHandler());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br></pre></td></tr></table></figure>
+<p>所以这个<code>addLast(handler)</code>触发的<code>addHandler</code>任务，会被延后到<code>register</code>完成后执行。此时<code>channepipeline</code>双链表如下图所示：<br><img src="/img/Netty-connect-2.bmp" alt=""></p>
+<h3 id="register"><a href="#register" class="headerlink" title="register()"></a>register()</h3><p>和服务器段的初始化一样，都是委托<br><code>AbstractChannel.AbstractUnsafe.register()</code>-&gt;<code>AbstractChannel.AbstractUnsafe.register0()</code>-&gt;<code>AbstractNioChannel.AbstractNioUnsafe.doregister()</code>实现的。然后执行<code>addLast()</code>的延迟任务，异步通知<code>register</code>操作成功，最后传播<code>registered</code>事件。完成后<code>pipeline</code>双链表如下：<br><img src="/img/Netty-connect-3.bmp" alt=""></p>
+<h3 id="connect-流程"><a href="#connect-流程" class="headerlink" title="connect 流程"></a>connect 流程</h3><p><code>connect</code>的流程：</p>
+<ol>
+<li>通过<code>channel.connect()</code>执行<code>connect</code>请求。(<code>第一次握手</code>)。</li>
+<li>等待服务器的第二次握手(<code>accept()</code>)。</li>
+<li>调用<code>channel.finishConnect()</code>完成三次握手，此时<code>channel</code>处于<code>active</code>状态，然后传播<code>active</code>事件。由于这里是<code>echo</code>应用，所以在传播<code>active</code>事件时，<code>EchoClientHandler</code>会拦截<code>active</code>事件，并且向服务器发送一条消息。</li>
+</ol>
+<h3 id="channel-connect"><a href="#channel-connect" class="headerlink" title="channel.connect"></a>channel.connect</h3><p>调用<code>channel.connect()</code>会在<code>pipeleine</code>上传播<code>connect</code>的出站<code>事件</code>，最后在<code>head</code>使用<code>AbstractNioUnsafe.connect()</code>实现`:</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">connect</span><span class="params">(</span></span></span><br><span class="line"><span class="function"><span class="params">                <span class="keyword">final</span> SocketAddress remoteAddress, <span class="keyword">final</span> SocketAddress localAddress, <span class="keyword">final</span> ChannelPromise promise)</span> </span>&#123;</span><br><span class="line">		.	</span><br><span class="line">                .</span><br><span class="line">		<span class="comment">// 一系列检查</span></span><br><span class="line">                <span class="keyword">boolean</span> wasActive = isActive();</span><br><span class="line">		<span class="comment">// 调用doconnect完成connect  doconnect位于NioSocketChannel</span></span><br><span class="line">                <span class="keyword">if</span> (doConnect(remoteAddress, localAddress)) &#123;</span><br><span class="line">                    fulfillConnectPromise(promise, wasActive);</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 异常处理和异步通知 当一段时间服务器没有相应握手 则终止连接请求</span></span><br><span class="line">		.</span><br><span class="line">		.	    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>doconnect()</code>方法在<code>NioSocketChannel</code>中实现。<br>当完成<code>connect()</code>之后，<code>eventloop</code>线程则在<code>for(;;)</code>死循环中<code>select</code>等待就绪任务。</p>
+<h3 id="服务器accept之后的过程"><a href="#服务器accept之后的过程" class="headerlink" title="服务器accept之后的过程"></a>服务器accept之后的过程</h3><p>当在<code>NioEventloop</code>线程的<code>run</code>方法中<code>select</code>到就绪<code>connect</code>事件事件时，则表明服务器调用了<code>channel.accept()</code>方法完成了连接：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">processSelectedKey</span><span class="params">(SelectionKey k, AbstractNioChannel ch)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> AbstractNioChannel.NioUnsafe unsafe = ch.unsafe();        </span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">int</span> readyOps = k.readyOps(); <span class="comment">// 取出就绪事件</span></span><br><span class="line">	    <span class="comment">// 就绪时事件是connect事件</span></span><br><span class="line">	    <span class="keyword">if</span> ((readyOps &amp; SelectionKey.OP_CONNECT) != <span class="number">0</span>) &#123; <span class="comment">// connect就绪事件</span></span><br><span class="line">                <span class="keyword">int</span> ops = k.interestOps();</span><br><span class="line">                ops &amp;= ~SelectionKey.OP_CONNECT; <span class="comment">// 清除OP_CONNECT</span></span><br><span class="line">                k.interestOps(ops); <span class="comment">// 设置0</span></span><br><span class="line"></span><br><span class="line">                unsafe.finishConnect();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            </span><br><span class="line">            <span class="keyword">if</span> ((readyOps &amp; SelectionKey.OP_WRITE) != <span class="number">0</span>) &#123;</span><br><span class="line">                ch.unsafe().forceFlush();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// 接收连接 accept事件</span></span><br><span class="line">            <span class="keyword">if</span> ((readyOps &amp; (SelectionKey.OP_READ |</span><br><span class="line">	    SelectionKey.OP_ACCEPT)) != <span class="number">0</span> || readyOps == <span class="number">0</span>) &#123;</span><br><span class="line">                unsafe.read();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">catch</span> (CancelledKeyException ignored) &#123;</span><br><span class="line">            unsafe.close(unsafe.voidPromise());</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>在确定是<code>connect</code>事件之后，首先将<code>SelectionKey</code>上的<code>connect就绪事件</code>清除，然后调用<code>unsafe.finishConnect()</code>方法，：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">finishConnect</span><span class="params">()</span> </span>&#123;                        </span><br><span class="line">       	     .</span><br><span class="line">	     .</span><br><span class="line">	     <span class="comment">// 一系列检查</span></span><br><span class="line">       	     <span class="keyword">boolean</span> wasActive = isActive();</span><br><span class="line">	     <span class="comment">// 进行 connect 连接 channel.finishConnect()</span></span><br><span class="line">             doFinishConnect(); </span><br><span class="line">	     <span class="comment">// 传播`active`事件</span></span><br><span class="line">             fulfillConnectPromise(connectPromise, wasActive);            </span><br><span class="line">	     <span class="comment">//异常处理</span></span><br><span class="line">	     .</span><br><span class="line">	     .</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>fulfillConnectPromise()</code>完成<code>active</code>事件的传播，在<code>head</code>处由<code>autoread = ture</code>，调用<code>channel.read</code>，将channel需要关注的<code>OP_READ</code>事件注册到<code>selector</code>中。<br><code>finishConnect()</code>和<code>fulfillConnectPromise()</code>方法位于<code>AbstractNioChannel</code></p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/07/21/Netty-accept/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-accept过程">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/07/19/Netty-bind/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-服务器bind过程">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#echo代码"><span class="toc-text">echo代码</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#SocketChannel和ServerSocketChannel-active的条件"><span class="toc-text">SocketChannel和ServerSocketChannel active的条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#客户端connect过程-与-服务器bind过程的区别"><span class="toc-text">客户端connect过程 与 服务器bind过程的区别</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#connect-初始化过程"><span class="toc-text">connect 初始化过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#任务队列的任务"><span class="toc-text">任务队列的任务</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ChannelHandler"><span class="toc-text">ChannelHandler</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#init"><span class="toc-text">init()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#register"><span class="toc-text">register()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#connect-流程"><span class="toc-text">connect 流程</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#channel-connect"><span class="toc-text">channel.connect</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#服务器accept之后的过程"><span class="toc-text">服务器accept之后的过程</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ThreadPoolExecutor精读(1)-线程池状态变量｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/28/java-ThreadPoolExecutor-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ThreadPoolExecutor精读(1)-线程池状态变量</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-28
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ThreadPoolExecutor精读(1)-线程池状态变量
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>ThreadPoolExecutor</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>实现特征</li>
+<li>线程池状态和工作线程数量</li>
+<li>关于<code>ctl</code>的操作</li>
+<li>成员变量</li>
+</ol>
+<h2 id="实现特征"><a href="#实现特征" class="headerlink" title="实现特征"></a>实现特征</h2><ol>
+<li>线程池实现了<code>Executor</code>接口，实现了<code>execute()</code>方法，将任务的提交和执行分离。</li>
+<li>线程池主要解决两个问题：<br>2.1 提高大量异步任务执行的性能。<br>2.2 提供资源管理的方式。</li>
+<li>提供了3种线程的实现：<br>3.1 <code>newFixedThreadPool</code>:<code>corePoolSize</code>与<code>MaxPoolSize</code>相等, <code>KeepAliveTime = 0</code>，使用无界<code>LinkedBlockingQueue</code>作为任务队列，这是一个固定大小的线程池。<br>3.2 <code>newSingleThreadExecutor</code>: <code>corePoolSize</code>与<code>MaxPoolSize</code>都等于<code>1</code>，<code>KeepAliveTime = 0</code>，使用无界的<code>LinkedBlockingQueue</code>作为任务队列，这是只有单个线程的线程池。<br>3.3 <code>newCachedThreadPool</code>: <code>corePoolSize = 0</code>，<code>MaxPoolSize = Integer.MAX_VALUE</code>，<code>KeepAliveTime=60L</code>，单位<code>TimeUnit.SECONDS</code>，阻塞队列为<code>SynchronousQueue</code>。这里当提交任务时如果没有工作线程可以执行，由于插入队列使用的是<code>offer()</code>方法，所以返回(队列已满)<code>false</code>，会导致新线程的创建。这里空闲工作线程最多存活<code>60</code>秒，然后被终止退出。所以这是一个可以缓存的线程池。</li>
+<li><code>corePoolSize</code>和<code>MaxPoolSize</code>在线程池构造方法中指定，也可以通过<code>setCorePoolSize()</code>和<code>setMaximumPoolSize()</code>进行动态的调整。</li>
+<li><code>preStartCoreThread()</code>方法可以提前为<code>线程池</code>创建核心工作线程，即创建<code>corePoolSize</code>数量的线程。默认不会提前创建线程。</li>
+<li>创建线程的方法默认使用<code>defaultThreadFactory</code>，当然可以由<code>setThreadFactory()</code>进行设置。</li>
+<li><code>KeepAliveTime</code>，表示空闲工作线程的最大存活时间。可以通过<code>setKeepAliveTime</code>进行设置。</li>
+<li><code>AllowCoreThreadTimeOut</code>参数当为<code>true</code>时，表示无论当前线程池的线程数量是否大于<code>corePoolSize</code>都进行空闲超时回收，即工作线程空闲时间超过<code>KeepAliveTime</code>就把线程终结。否则<code>AllowCoreThreadTimeOut</code>为<code>false</code>，则只有在当前线程池的线程数量大于<code>corePoolSize</code>时才进行空闲超时回收。默认为<code>false</code>。可以通过<code>AllowCoreThreadTimeOut(value)</code>进行设置。这么做的目的是减少资源消耗。</li>
+<li><code>workQueue</code>是一个阻塞队列，作为任务队列。当线程池的工作线程数大于<code>corePoolSize</code>，小于<code>MaxPoolSize</code>时，任务提交会插入到阻塞队列中，有3种阻塞队列比较常用：<br>9.1 <code>SynchronousQueue</code>：直接交付类型。如果没有空闲的工作线程，则直接创建新的工作线程进行执行，因为<code>offer()</code>方法直接返回<code>false</code>。一般与<code>MaxPoolSize</code>(无界)一起使用。适合于任务之间相互依赖的，主要不容易产生死锁。<br>9.2 <code>LinkedBlockingQueue</code>：无界阻塞队列。将会执行大量任务加入到任务队列中，稍候执行。此时<code>MaxPoolSize</code>对于线程池的影响很小。适合于任务之间相互独立。<br>9.3 <code>ArrayBlockingQueue</code>：有界阻塞队列。可以防止资源的浪费。队列容量和<code>MaxPoolSize</code>相互影响。但是当使用<code>较大</code>的队列容量和较小的<code>MaxPoolSize</code>时，将会减小<code>CPU</code>的使用率。</li>
+<li>当任务队列已满，且线程池中的工作线程达到<code>MaxPoolSize</code>时，提交任务，会被线程池拒绝。线程池默认有4种拒绝策略：<br>10.1 <code>AbortPolicy</code>：线程池默认的拒绝策略。丢弃这个任务，抛出<code>RejectedExecutionException</code>。<br>10.2 <code>DiscardPolicy</code>：丢弃这个任务，但是不抛出<code>RejectedExecutionException</code>异常。<br>10.3 <code>CallerPolicy</code>：在当前提交任务的线程执行这个任务。<br>10.4 <code>DiscardOldestPolicy</code>：丢弃任务队列中最前面的任务，然后再次提交任务。</li>
+<li>线程池提供了一些<code>hook</code>方法，进行扩展，其中包含四种：<br>11.1 <code>beforeExecute()</code>：在每个任务执行之前调用，用于自定义扩展，包括任务环境的初始化。<br>11.2 <code>afterExecute()</code>：在每个任务执行完成之后调用，一般做统计工作。<br>11.3 <code>terminate()</code>：当线程池状态处于<code>TIDYING</code>时调用。<br>11.4 <code>onShutdown()</code>：在<code>shutdown()</code>中被使用。</li>
+</ol>
+<h2 id="线程池状态和工作线程数量"><a href="#线程池状态和工作线程数量" class="headerlink" title="线程池状态和工作线程数量"></a>线程池状态和工作线程数量</h2><p><code>ThreadPoolExecutor</code>将<code>5</code>个状态以及线程池中工作线程的数量，两个变量放在一个<code>AtomicInteger</code>：</p>
+<ol>
+<li>高3位用来表示线程池的状态。</li>
+<li>低29位用来表示线程池中的工作线程数量。最大为<code>2^29 - 1</code>。</li>
+</ol>
+<h3 id="ctl"><a href="#ctl" class="headerlink" title="ctl"></a>ctl</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> AtomicInteger ctl = <span class="keyword">new</span> AtomicInteger(ctlOf(RUNNING, <span class="number">0</span>));    </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> COUNT_BITS = Integer.SIZE - <span class="number">3</span>;    </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> CAPACITY   = (<span class="number">1</span> &lt;&lt; COUNT_BITS) - <span class="number">1</span>;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>ctl</code>：表示线程池状态和工作线程数量的值。类型是<code>AtomicInteger</code>。初始状态为<code>RUNNING</code>，工作线程数量为<code>0</code>。</li>
+<li><code>COUNT_BITS</code>：工作线程数量所占的位数，这里是<code>29</code>。</li>
+<li><code>CAPACITY</code>：工作线程数量最大数量，为<code>2^29</code> - 1。</li>
+</ol>
+<h3 id="5种状态"><a href="#5种状态" class="headerlink" title="5种状态"></a>5种状态</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 111 0000.....</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> RUNNING    = -<span class="number">1</span> &lt;&lt; COUNT_BITS;</span><br><span class="line"><span class="comment">// 000 0000..... </span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> SHUTDOWN   =  <span class="number">0</span> &lt;&lt; COUNT_BITS;</span><br><span class="line"><span class="comment">// 001 0000.....</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> STOP       =  <span class="number">1</span> &lt;&lt; COUNT_BITS;</span><br><span class="line"><span class="comment">// 010 0000.....</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> TIDYING    =  <span class="number">2</span> &lt;&lt; COUNT_BITS;</span><br><span class="line"><span class="comment">// 011 0000.....</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> TERMINATED =  <span class="number">3</span> &lt;&lt; COUNT_BITS;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>RUNNING</code>：高3位<code>111</code>，表示线程池处于正常运行的状态。</li>
+<li><code>SHUTDOWN</code>：高3位<code>000</code>，表示线程池处于<code>SHUTDOWN</code>状态，即调用<code>shutdown()</code>之后的状态。这个状态不再接收新的任务，但是会执行完任务队列中的剩余任务。</li>
+<li><code>STOP</code>：高3位<code>001</code>，表示线程池处于<code>STOP</code>状态，即调用<code>shutdownNow()</code>之后的状态。这个状态不再接收新的任务，而且把任务队列清空，即不再执行这些任务，会在<code>shutdownNow()</code>中返回这些任务。</li>
+<li><code>TIDYING</code>：高3位<code>010</code>线程池中的工作线程数量为<code>0</code>，任务队列中没有任务的状态。</li>
+<li><code>TERMINATED</code>：高3位<code>011</code>，在<code>TIDYING</code>状态下，调用完成<code>terminate()</code>方法之后的状态。也是线程池终止的状态。</li>
+</ol>
+<h3 id="状态相互转化"><a href="#状态相互转化" class="headerlink" title="状态相互转化"></a>状态相互转化</h3><ol>
+<li><code>RUNNING</code>—&gt;<code>SHUTDOWN</code>:调用<code>shutdown()</code>之后的方法，很有可能在<code>finalize()</code>中调用<code>shutdown()</code>。</li>
+<li><code>RUNNING、SHUTDOWN</code>—&gt;<code>STOP</code>:调用<code>shutdownNow()</code>之后的状态。</li>
+<li><code>SHUTDOWN</code>—&gt;<code>TIDYING</code>:当线程池为空，而且任务队列也为空。</li>
+<li><code>STOP</code>—&gt;<code>TIDYING</code>:线程池为空。</li>
+<li><code>TIDYING</code>：当<code>terminate()</code>方法完成之后。</li>
+</ol>
+<h2 id="关于ctl的操作"><a href="#关于ctl的操作" class="headerlink" title="关于ctl的操作"></a>关于ctl的操作</h2><ol>
+<li><code>runStateOf()</code></li>
+<li><code>workerCountOf()</code></li>
+<li><code>ctlOf()</code></li>
+<li><code>runStateLessThan()</code></li>
+<li><code>runStateAtLeast()</code></li>
+<li><code>isRunning()</code></li>
+<li><code>compareAndDecrementWorkerCount()</code></li>
+<li><code>decrementWorkerCount()</code></li>
+</ol>
+<h3 id="runStateOf"><a href="#runStateOf" class="headerlink" title="runStateOf()"></a>runStateOf()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">runStateOf</span><span class="params">(<span class="keyword">int</span> c)</span>     </span>&#123; <span class="keyword">return</span> c &amp; ~CAPACITY; &#125;</span><br></pre></td></tr></table></figure>
+<p>只取<code>ctl</code>高3位的值，其余位的位置为<code>0</code>。获取线程池<code>当前状态</code>。</p>
+<h3 id="workerCountOf"><a href="#workerCountOf" class="headerlink" title="workerCountOf()"></a>workerCountOf()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">workerCountOf</span><span class="params">(<span class="keyword">int</span> c)</span>  </span>&#123; <span class="keyword">return</span> c &amp; CAPACITY; &#125;</span><br></pre></td></tr></table></figure>
+<p>获取<code>ctl</code>低29位，即线程池中工作线程的数量。</p>
+<h3 id="ctlOf"><a href="#ctlOf" class="headerlink" title="ctlOf()"></a>ctlOf()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">int</span> <span class="title">ctlOf</span><span class="params">(<span class="keyword">int</span> rs, <span class="keyword">int</span> wc)</span> </span>&#123; <span class="keyword">return</span> rs | wc; &#125;</span><br></pre></td></tr></table></figure>
+<p>将线程池状态<code>高3位</code>，与线程池中线程数通过或运算量合并成一个<code>ctl</code>。</p>
+<h3 id="runStateLessThan"><a href="#runStateLessThan" class="headerlink" title="runStateLessThan()"></a>runStateLessThan()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">runStateLessThan</span><span class="params">(<span class="keyword">int</span> c, <span class="keyword">int</span> s)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> c &lt; s;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>线程池的状态<code>c</code>&lt;<code>s</code>是否成立。</p>
+<h3 id="runStateAtLeast"><a href="#runStateAtLeast" class="headerlink" title="runStateAtLeast()"></a>runStateAtLeast()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">runStateAtLeast</span><span class="params">(<span class="keyword">int</span> c, <span class="keyword">int</span> s)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> c &gt;= s;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>线程池的状态<code>c</code>&gt;=<code>s</code>是否成立。</p>
+<h3 id="isRunning"><a href="#isRunning" class="headerlink" title="isRunning()"></a>isRunning()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">isRunning</span><span class="params">(<span class="keyword">int</span> c)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> c &lt; SHUTDOWN;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>判断线程池状态<code>c</code>是否为<code>RUNNING</code>，即<code>c</code> &lt; <code>SHUTDOWN</code>。</p>
+<h3 id="compareAndDecrementWorkerCount"><a href="#compareAndDecrementWorkerCount" class="headerlink" title="compareAndDecrementWorkerCount()"></a>compareAndDecrementWorkerCount()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">compareAndDecrementWorkerCount</span><span class="params">(<span class="keyword">int</span> expect)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> ctl.compareAndSet(expect, expect - <span class="number">1</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>线程池工作线程数减1，通过<code>CAS</code>更新。<br>如果成功，返回<code>true</code>。失败返回<code>false</code>。</p>
+<h3 id="decrementWorkerCount"><a href="#decrementWorkerCount" class="headerlink" title="decrementWorkerCount()"></a>decrementWorkerCount()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">decrementWorkerCount</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">do</span> &#123;&#125; <span class="keyword">while</span> (! compareAndDecrementWorkerCount(ctl.get()));</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>放在一个<code>while()</code>循环中，确保线程池工作线程数减1成功。</p>
+<h2 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// final 不可变 </span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> BlockingQueue&lt;Runnable&gt; workQueue;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> ReentrantLock mainLock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> HashSet&lt;Worker&gt; workers = <span class="keyword">new</span> HashSet&lt;Worker&gt;();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition termination = mainLock.newCondition();</span><br><span class="line"><span class="comment">// 获取更新 都在获取mainLock后 所以普通变量就可以保持可见性	</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">int</span> largestPoolSize;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">long</span> completedTaskCount;</span><br><span class="line"><span class="comment">// 下面都是volatile</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> ThreadFactory threadFactory;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> RejectedExecutionHandler handler;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">long</span> keepAliveTime;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">boolean</span> allowCoreThreadTimeOut;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> corePoolSize;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> maximumPoolSize;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> RejectedExecutionHandler defaultHandler =</span><br><span class="line">    <span class="keyword">new</span> AbortPolicy();</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>workQueue</code>：任务阻塞队列。在<code>tryTerminate()</code>中调用<code>isEmpty()</code>判断队列是否为空。</li>
+<li><code>mainLock</code>：可重入独占锁。在更新统计变量，以及操作<code>工作线程集合</code>(worker)时加的锁。</li>
+<li><code>workers</code>：线程池工作线程的集合。访问时必须持有<code>mainLock</code>独占锁。</li>
+<li><code>termination</code>：<code>mainLock</code>的<code>CONDITION</code>队列，用于阻塞调用<code>awaitTermination()</code>线程。</li>
+<li><code>largestPoolSize</code>和<code>completedTaskCount</code>：线程池的统计变量。分别统计<code>最大线程池大小</code>和<code>完成从任务数目</code>。访问和修改时必须持有<code>mainLock</code>。</li>
+<li><code>threadFactory</code>：创建线程的对象，默认是<code>defaultThreadFactory</code>。</li>
+<li><code>handler</code>：线程池拒绝策略。当线程池工作线程达到<code>MaxPoolSize</code>，且任务队列也满了时，提交任务会被线程池拒绝。有4种拒绝策略。默认是<code>AbortPolicy</code>，丢弃任务，抛出<code>RejectedExecutionException</code>异常。</li>
+<li><code>keepAliveTime</code>：空闲线程最大存活时间。</li>
+<li><code>allowCoreThreadTimeOut</code>：默认为<code>false</code>，表示当线程池中的线程大于<code>corePoolSize</code>时，如果空闲时间超过<code>keepAliveTime</code>，则将线程终止。为<code>true</code>则表示只要工作线程空闲时间达到<code>keepAliveTime</code>，则终止线程。</li>
+<li><code>corePoolSize</code>：核心线程池的数量。</li>
+<li><code>maximumPoolSize</code>：线程池中最大可以保存的线程数量。</li>
+<li><code>defaultHandler</code>：默认拒绝策略。是<code>AbortPolicy</code>。</li>
+</ol>
+<p>注意：</p>
+<ol>
+<li>前面的<code>workQueue</code>、<code>mainLock</code>、<code>workers</code>和<code>termination</code>都是<code>final</code>，目的是为了多线程环境下的安全发布。</li>
+<li><code>workQueue</code>、<code>mainLock</code>和<code>termination</code>都是线程安全的工具，所以在使用时是线程安全的。</li>
+<li>而<code>workers</code>在访问时需要先占用<code>mainLock</code>，所以这个也是线程安全的。</li>
+<li>同样两个统计变量<code>largestPoolSize</code>和<code>completedTaskCount</code>访问修改时都需要占用<code>mainLock</code>，所以也可以是线程安全的。</li>
+<li>其余都是<code>volatile</code>变量，访问和修改时都不加锁，使用<code>volatile</code>保持可见性，但是这种状态是若一致性。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/28/java-ThreadPoolExecutor-2/" data-toggle="tooltip" data-placement="top"
+                           title="ThreadPoolExecutor精读(2)-Worker">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/27/java-CountDownLatch/" data-toggle="tooltip" data-placement="top"
+                           title="CountDownLatch精读">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#实现特征"><span class="toc-text">实现特征</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#线程池状态和工作线程数量"><span class="toc-text">线程池状态和工作线程数量</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ctl"><span class="toc-text">ctl</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5种状态"><span class="toc-text">5种状态</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#状态相互转化"><span class="toc-text">状态相互转化</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#关于ctl的操作"><span class="toc-text">关于ctl的操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#runStateOf"><span class="toc-text">runStateOf()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#workerCountOf"><span class="toc-text">workerCountOf()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#ctlOf"><span class="toc-text">ctlOf()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#runStateLessThan"><span class="toc-text">runStateLessThan()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#runStateAtLeast"><span class="toc-text">runStateAtLeast()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isRunning"><span class="toc-text">isRunning()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#compareAndDecrementWorkerCount"><span class="toc-text">compareAndDecrementWorkerCount()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#decrementWorkerCount"><span class="toc-text">decrementWorkerCount()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

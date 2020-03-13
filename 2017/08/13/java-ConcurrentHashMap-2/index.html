@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ConcurrentHashMap精读(2)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/13/java-ConcurrentHashMap-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ConcurrentHashMap精读(2)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-13
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ConcurrentHashMap精读(2)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p><code>ConcurrentHashMap</code>源码基于jdk-1.6</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>扩容机制</li>
+<li>读不加锁、写加锁的实现</li>
+<li>三种遍历</li>
+</ol>
+<h2 id="扩容机制"><a href="#扩容机制" class="headerlink" title="扩容机制"></a>扩容机制</h2><p>首先明确，扩容的对象是<code>segment.table</code>，扩容步骤：</p>
+<ol>
+<li>在<code>put()</code>方法中，如果<code>count &gt;= threshold</code>，则调用<code>rehash()</code>进行扩容。</li>
+<li>在<code>rehash()</code>方法中创建新<code>newtable</code>数组，长度为原来的<code>两倍</code>。所以即扩容成原来的两倍。</li>
+<li>将<code>oldTable</code>中每个链表中的<code>Entry</code>转移到<code>newTable</code>。</li>
+</ol>
+<p>这里<code>segment</code>转移<code>Entry</code>与之前<code>HashMap</code>、<code>WeakHashMap</code>都不一样。<br><code>HashMap</code>和<code>WeakHashMap</code>是把每个<code>entry</code>移动到新的<code>table</code>中。</p>
+<h3 id="oldTable中entry对象转移到newTable的位置"><a href="#oldTable中entry对象转移到newTable的位置" class="headerlink" title="oldTable中entry对象转移到newTable的位置"></a>oldTable中entry对象转移到newTable的位置</h3><p>这里使用了一个性质：即<code>oldTable</code>中<code>entry</code>，只可能转移到<code>newTable</code>中两个位置。<br>解释：<br><code>oldTable</code>中<code>entry</code>对象，在<code>oldTable</code>中的位置为：<br><code>entry.hash &amp; (oldTable.length - 1)</code><br>而需要转移到<code>newTable</code>的位置为：<br><code>entry.hash &amp; (newTable.length - 1)</code></p>
+<p>又扩容为原来两倍，所以<code>newTable.length</code>是<code>oldTable.length</code>的两倍。我们记<code>oldTable.length = 2 ^ k</code>，则<code>newTable.length = 2 ^ (k + 1)</code>。<br>则在<code>oldTable</code>中的位置为：<br><code>entry.hash &amp; (2 ^ k)</code>。<br>在<code>newTable</code>中的位置为：<br><code>entry.hash &amp; (2 ^ (k + 1))</code>。<br>从上面可以看出，<br><code>oldTable</code>的位置是取<code>entry.hash</code>的低<code>k</code>位。<br><code>newTable</code>的位置是取<code>entry.hash</code>的低<code>k + 1</code>位。<br>所以<code>newTable</code>位置比<code>oldTable</code>的位置多了一位，这一位可能是<code>1</code>，也可能是0。<br>当为<code>0</code>时，在<code>newTable</code>中的位置为：<br>与<code>oldTable</code>中的位置相同。<br>当为<code>1</code>时，在<code>newTable</code>中的位置为：<br>在<code>oldTable</code>中的位置，基础上 + 2 ^ k。</p>
+<p><img src="/img/java-concurrenthashmap-2-1.bmp" alt=""></p>
+<h3 id="扩容实现"><a href="#扩容实现" class="headerlink" title="扩容实现"></a>扩容实现</h3><p>主要是转移的实现：<br><code>ConcurrentHashMap</code>利用上面<code>entry</code>在<code>oldTable</code>的下标和在<code>newTable</code>的下标的关系，采取一种<code>new Entry</code>尽量少的方法。将<code>oldTable[idx]</code>的单链表分为两端：</p>
+<ol>
+<li>前半段是在<code>newTable</code>的下标为两种混合的<code>entry</code>集合。</li>
+<li>后半段是在<code>newTable</code>的下标为只有一种的<code>entry</code>集合。</li>
+</ol>
+<p>然后分别对两个半段进行处理：</p>
+<ol>
+<li>对于混合的，则遍历每个，然后转移到<code>newTable</code>合适的单链表中。</li>
+<li>对于单一的，则直接挂到目标<code>newTable[index]</code>上。</li>
+</ol>
+<p><img src="/img/java-concurrenthashmap-2-2.bmp" alt=""></p>
+<h3 id="rehash"><a href="#rehash" class="headerlink" title="rehash()"></a>rehash()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">rehash</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            HashEntry&lt;K,V&gt;[] oldTable = table;</span><br><span class="line">            <span class="keyword">int</span> oldCapacity = oldTable.length;</span><br><span class="line">	    <span class="comment">// 旧segment table长度大于等于2^30 直接返回</span></span><br><span class="line">            <span class="keyword">if</span> (oldCapacity &gt;= MAXIMUM_CAPACITY)</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">	    <span class="comment">// 新的table 长度为原来的一倍</span></span><br><span class="line">            HashEntry&lt;K,V&gt;[] newTable = HashEntry.newArray(oldCapacity&lt;&lt;<span class="number">1</span>);</span><br><span class="line">	    <span class="comment">// 新的阀值</span></span><br><span class="line">            threshold = (<span class="keyword">int</span>)(newTable.length * loadFactor);</span><br><span class="line">	    <span class="comment">// 长度掩码</span></span><br><span class="line">            <span class="keyword">int</span> sizeMask = newTable.length - <span class="number">1</span>;</span><br><span class="line">	    <span class="comment">// 遍历segment 的oldTable中每一条链</span></span><br><span class="line">            <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; oldCapacity ; i++) &#123;</span><br><span class="line">                <span class="comment">// We need to guarantee that any existing reads of old Map can</span></span><br><span class="line">                <span class="comment">//  proceed. So we cannot yet null out each bin.</span></span><br><span class="line">                HashEntry&lt;K,V&gt; e = oldTable[i];</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (e != <span class="keyword">null</span>) &#123;</span><br><span class="line">                    HashEntry&lt;K,V&gt; next = e.next;</span><br><span class="line">		    <span class="comment">// e.hash 存放的是wang/jekins 再散列后的hash值</span></span><br><span class="line">                    <span class="keyword">int</span> idx = e.hash &amp; sizeMask;</span><br><span class="line"></span><br><span class="line">                    <span class="comment">//  Single node on list</span></span><br><span class="line">		    <span class="comment">// 链表中只有这一个entry</span></span><br><span class="line">                    <span class="keyword">if</span> (next == <span class="keyword">null</span>)</span><br><span class="line">                        newTable[idx] = e; <span class="comment">// 直接设置</span></span><br><span class="line"></span><br><span class="line">                    <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="comment">// Reuse trailing consecutive sequence at same slot</span></span><br><span class="line">                        HashEntry&lt;K,V&gt; lastRun = e;</span><br><span class="line">                        <span class="keyword">int</span> lastIdx = idx;</span><br><span class="line">			<span class="comment">// 遍历单链表，将单链表分为两半</span></span><br><span class="line">			<span class="comment">// 后半部分 在newTable中的下标相同</span></span><br><span class="line">                        <span class="keyword">for</span> (HashEntry&lt;K,V&gt; last = next;</span><br><span class="line">                             last != <span class="keyword">null</span>;</span><br><span class="line">                             last = last.next) &#123;</span><br><span class="line">                            <span class="keyword">int</span> k = last.hash &amp; sizeMask;</span><br><span class="line">			    <span class="comment">// 当前这个entry 不在上一个entry插入的链表中</span></span><br><span class="line">                            <span class="keyword">if</span> (k != lastIdx) &#123;</span><br><span class="line">                                lastIdx = k;</span><br><span class="line">                                lastRun = last;</span><br><span class="line">                            &#125;</span><br><span class="line">                        &#125;</span><br><span class="line">                        newTable[lastIdx] = lastRun;</span><br><span class="line"></span><br><span class="line">                        <span class="comment">// Clone all remaining nodes</span></span><br><span class="line">                        <span class="keyword">for</span> (HashEntry&lt;K,V&gt; p = e; p != lastRun; p = p.next) &#123;</span><br><span class="line">                            <span class="keyword">int</span> k = p.hash &amp; sizeMask;</span><br><span class="line">                            HashEntry&lt;K,V&gt; n = newTable[k];</span><br><span class="line">                            newTable[k] = <span class="keyword">new</span> HashEntry&lt;K,V&gt;(p.key, p.hash,</span><br><span class="line">                                                             n, p.value);</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">            table = newTable;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果<code>oldTable &gt;= 2 ^ 30</code>，则不进行扩容，直接返回。</li>
+<li>创建<code>newTable</code>，数组长度为原来的两倍。</li>
+<li>遍历<code>oldTable</code>中每个<code>entry</code>单链表。</li>
+<li>按上面方法将当前遍历的单链表分为两段。</li>
+<li>将后半部分的表头，赋值给<code>newTable[lastIdx]</code>。</li>
+<li>遍历前半部分链表，创建其副本，并且插入到<code>newTable</code>目标位置。</li>
+<li><code>table = newTable</code>。</li>
+</ol>
+<h2 id="读不加锁、写加锁的实现"><a href="#读不加锁、写加锁的实现" class="headerlink" title="读不加锁、写加锁的实现"></a>读不加锁、写加锁的实现</h2><p>当一个线程在读数据(<code>遍历或者调用get()</code>)，即调用<code>get()</code>，其它线程可能会出现三种修改操作：</p>
+<ol>
+<li><code>put()</code>，插入。</li>
+<li><code>remove()</code>，移除。</li>
+<li><code>clear()</code>，移除这个<code>map</code>。</li>
+</ol>
+<h3 id="put"><a href="#put" class="headerlink" title="put()"></a>put()</h3><p>即一个线程读数据，另外一个线程调用<code>put()</code>。会出现三种情况：</p>
+<ol>
+<li>写线程顺利插入单链表头部，线程读取的数据，在链表插入链表非头部，或者其它单链表上，则读取成功。</li>
+<li>写线程顺利插入单链表头部，线程读取的数据，在链表插入链表头部，但是<code>put()</code>没有发生重排序，所以读取成功。</li>
+<li>写线程顺利插入单链表头部，线程读取的数据，在链表插入链表头部，但是<code>put()</code>发生了重排序，所以<code>value = null</code>，则调用<code>readValueUnderLock(e)</code>，加锁读取。</li>
+</ol>
+<p>在<code>put</code>中，<code>tab[index] = new HashEntry&lt;K,V&gt;(key, hash, first, value);</code>会发生重排序，一条<code>new</code>赋值语句，包含三条操作：</p>
+<ol>
+<li>为<code>new</code>的对象分配内存空间。</li>
+<li>初始化对象</li>
+<li>将对象引用，赋值给目标引用变量。</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">HashEntry(K key, <span class="keyword">int</span> hash, HashEntry&lt;K,V&gt; next, V value) &#123;</span><br><span class="line">           <span class="keyword">this</span>.key = key;</span><br><span class="line">           <span class="keyword">this</span>.hash = hash;</span><br><span class="line">           <span class="keyword">this</span>.next = next;</span><br><span class="line">    <span class="comment">// volatile写 后面的语句还是会与volatile写重排序</span></span><br><span class="line">           <span class="keyword">this</span>.value = value; <span class="comment">// 这条赋值语句 可以和外面的交换 即table[index] = ..</span></span><br><span class="line">                        <span class="comment">// 造成 get() 方法当v == null 的时候需要加锁获取</span></span><br><span class="line">       &#125;</span><br><span class="line">tab[index] = <span class="keyword">new</span> HashEntry&lt;K,V&gt;(key, hash, first, value);</span><br></pre></td></tr></table></figure>
+<p>这里由于<code>next</code>，<code>key</code>，<code>hash</code>都是<code>final</code>域，所以这三个都禁止与<code>table[idx] = ...</code>重排序。<br>而<code>value</code>是<code>volatile</code>，<code>volatile</code>写并不会禁止，它后面的与它重排序。当这种情况出现时，如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">table[idx] = entry ;</span><br><span class="line">entry.value = value;</span><br></pre></td></tr></table></figure>
+<p>所以造成<code>entry</code>对象溢出，在没有初始化完全，就被其它线程使用，造成<code>value = null</code>。<br>所以最后加锁获取。此时已经初始化完全。</p>
+<p>在<code>JDK1.7</code>中没有使用<code>加锁获取</code>机制，因为插入的时候使用了<code>putOderedObject()</code>方法。<br><code>putOrderedObject()</code>方法阻止前面的写与<code>put</code>方法写的重排序。</p>
+<h3 id="remove"><a href="#remove" class="headerlink" title="remove()"></a>remove()</h3><p>即一个线程读数据，另外一个线程调用<code>put()</code>。这里读线程不加锁而不出错，做法：</p>
+<ol>
+<li><code>table[idx]</code>引用一直没有变化。</li>
+<li><code>remove()</code>将<code>target</code>的<code>next</code>结点引用赋值给<code>newFirst</code>，然后从这个冲突链表的第一个结点开始遍历(直到<code>target</code>之前的一个)，每次创建复制结点的值，头插法插入到<code>newFirst</code>单链表中。即复制<code>target</code><br>之前的所有结点。</li>
+<li>最后让<code>table[idx]</code>指向新链表的表头，即<code>newFirst</code>。</li>
+</ol>
+<p>所以读线程可能会在读取旧链的数据，而不出错。因为向<code>table[idx]</code>修改引用时，其它线程读取<code>table[idx]</code>只会得到两种结果，新链或者旧链，两者都不算出错。</p>
+<h3 id="clear"><a href="#clear" class="headerlink" title="clear()"></a>clear()</h3><p><code>clear()</code>会把所有<code>segment</code>的所有<code>table</code>中的数组项全部置为<code>null</code>。和<code>remove()</code>类似。</p>
+<h2 id="三种遍历"><a href="#三种遍历" class="headerlink" title="三种遍历"></a>三种遍历</h2><p>和<code>HashMap</code>一样具有三种遍历方式：</p>
+<ol>
+<li>遍历<code>entry</code>，使用<code>map.entrySet()</code>获取迭代器(<code>EntryIterator</code>对象)。</li>
+<li>遍历<code>key</code>， 使用<code>map.keySet()</code>获取迭代器(<code>KeyIterator</code>对象)。</li>
+<li>遍历<code>value</code>，使用<code>map.values()</code>获取迭代器(<code>ValueIterator</code>对象)。</li>
+</ol>
+<p>主要还是由<code>HashIterator</code>类实现三个方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function">HashEntry <span class="title">nextEntry</span><span class="params">()</span></span>;</span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span></span>;</span><br></pre></td></tr></table></figure>
+<h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="comment">// segment数组中下一个下标idx</span></span><br><span class="line">       <span class="keyword">int</span> nextSegmentIndex;</span><br><span class="line"><span class="comment">// segment table中下一个entry的下标</span></span><br><span class="line">       <span class="keyword">int</span> nextTableIndex;</span><br><span class="line"><span class="comment">// 当前使用的table</span></span><br><span class="line">       HashEntry&lt;K,V&gt;[] currentTable;</span><br><span class="line"><span class="comment">// 下一个访问的entry</span></span><br><span class="line">       HashEntry&lt;K, V&gt; nextEntry;</span><br><span class="line">       HashEntry&lt;K, V&gt; lastReturned;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>nextSegmentIndex</code>：当前或者下一个遍历的<code>segment</code>数组的下标。</li>
+<li><code>nextTableIndex</code>：当前或者下一个遍历的<code>segment.table</code>数组的下标。</li>
+<li><code>currentTable</code>：当前正在遍历的<code>table</code>。</li>
+<li><code>nextEntry</code>：下一个访问的<code>entry</code>。</li>
+<li><code>lastReturned</code>：在<code>nextEntry()</code>中返回的<code>entry</code>。</li>
+</ol>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">  HashIterator() &#123;</span><br><span class="line"><span class="comment">// 从最后一段开始遍历</span></span><br><span class="line">       nextSegmentIndex = segments.length - <span class="number">1</span>;</span><br><span class="line">       nextTableIndex = -<span class="number">1</span>;</span><br><span class="line">       advance();</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>从<code>nextSegmentIndex = segments.length - 1</code>可以看出，<code>ConcurrentHashMap</code>遍历是从最后一个<code>segment</code>开始遍历。</p>
+<h3 id="advance"><a href="#advance" class="headerlink" title="advance()"></a>advance()</h3><p><code>advance()</code>方法是遍历的核心，负责查找下一个<code>entry</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 寻找下一个可用的entry</span></span><br><span class="line">       <span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">advance</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 当前table[idx]链表还没有遍历完 则指向下一个</span></span><br><span class="line">           <span class="keyword">if</span> (nextEntry != <span class="keyword">null</span> &amp;&amp; (nextEntry = nextEntry.next) != <span class="keyword">null</span>)</span><br><span class="line">               <span class="keyword">return</span>;</span><br><span class="line">    <span class="comment">// 当前currentTable[idx]遍历完 则使用--i下标的currentTable</span></span><br><span class="line">           <span class="keyword">while</span> (nextTableIndex &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">               <span class="keyword">if</span> ( (nextEntry = currentTable[nextTableIndex--]) != <span class="keyword">null</span>)</span><br><span class="line">                   <span class="keyword">return</span>;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// segment[nextSegmentIndex] 遍历完 则使用上一个segment</span></span><br><span class="line">           <span class="keyword">while</span> (nextSegmentIndex &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">               Segment&lt;K,V&gt; seg = segments[nextSegmentIndex--];</span><br><span class="line">               <span class="keyword">if</span> (seg.count != <span class="number">0</span>) &#123;</span><br><span class="line">                   currentTable = seg.table;</span><br><span class="line">	    <span class="comment">// 从table数组最后一项开始遍历</span></span><br><span class="line">                   <span class="keyword">for</span> (<span class="keyword">int</span> j = currentTable.length - <span class="number">1</span>; j &gt;= <span class="number">0</span>; --j) &#123;</span><br><span class="line">                       <span class="keyword">if</span> ( (nextEntry = currentTable[j]) != <span class="keyword">null</span>) &#123;</span><br><span class="line">                           nextTableIndex = j - <span class="number">1</span>;</span><br><span class="line">                           <span class="keyword">return</span>;</span><br><span class="line">                       &#125;</span><br><span class="line">                   &#125;</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果当前<code>entry</code>，即<code>nextEntry</code>不为<code>null</code>且它的<code>next</code>域不为<code>null</code>，则在当前单链表中获取下一个<code>entry</code>。</li>
+<li>当前链表已经遍历完，则向<code>table</code>数组中的前一个单链表获取。</li>
+<li><code>table</code>数组已经遍历完，则向<code>segment</code>数组的前一个的<code>segment</code>的<code>table</code>获取。<code>table</code>也是从后往前的顺序获取。</li>
+</ol>
+<h3 id="hasNext"><a href="#hasNext" class="headerlink" title="hasNext()"></a>hasNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">       <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">hasNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       <span class="keyword">return</span> nextEntry != <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>判断是否遍历完。</p>
+<h3 id="nextEntry"><a href="#nextEntry" class="headerlink" title="nextEntry()"></a>nextEntry()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function">HashEntry&lt;K,V&gt; <span class="title">nextEntry</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">if</span> (nextEntry == <span class="keyword">null</span>)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> NoSuchElementException();</span><br><span class="line">            lastReturned = nextEntry;</span><br><span class="line">            advance();</span><br><span class="line">            <span class="keyword">return</span> lastReturned;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>获取<code>nextEntry</code>。获取后，会调用<code>advance()</code>进行下一个查询。</p>
+<h3 id="remove-1"><a href="#remove-1" class="headerlink" title="remove()"></a>remove()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">remove</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (lastReturned == <span class="keyword">null</span>)</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> IllegalStateException();</span><br><span class="line">    ConcurrentHashMap.<span class="keyword">this</span>.remove(lastReturned.key);</span><br><span class="line">    lastReturned = <span class="keyword">null</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>注意</code>：<code>ConcurrentHashMap</code>遍历顺序，是从最后一个<code>segment</code>的最后一个<code>table</code>数组项，向前遍历。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/14/java-ConcurrentHashMap-3/" data-toggle="tooltip" data-placement="top"
+                           title="jdk7-ConcurrentHashMap精读">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/13/java-ConcurrentHashMap-1/" data-toggle="tooltip" data-placement="top"
+                           title="ConcurrentHashMap精读(1)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#扩容机制"><span class="toc-text">扩容机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#oldTable中entry对象转移到newTable的位置"><span class="toc-text">oldTable中entry对象转移到newTable的位置</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#扩容实现"><span class="toc-text">扩容实现</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#rehash"><span class="toc-text">rehash()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#读不加锁、写加锁的实现"><span class="toc-text">读不加锁、写加锁的实现</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#put"><span class="toc-text">put()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#remove"><span class="toc-text">remove()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#clear"><span class="toc-text">clear()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#三种遍历"><span class="toc-text">三种遍历</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#advance"><span class="toc-text">advance()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#hasNext"><span class="toc-text">hasNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#nextEntry"><span class="toc-text">nextEntry()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#remove-1"><span class="toc-text">remove()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

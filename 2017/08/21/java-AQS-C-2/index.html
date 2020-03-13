@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        AQS精读(2)-sync队列｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/21/java-AQS-C-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>AQS精读(2)-sync队列</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-21
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            AQS精读(2)-sync队列
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>AbstractQueuedSynchronizer</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>AQS</code>成员变量</li>
+<li><code>state</code>变量的操作 </li>
+<li><code>sync</code>队列的操作</li>
+<li><code>AQS</code>需要子类实现的5种方法</li>
+</ol>
+<h2 id="AQS成员变量"><a href="#AQS成员变量" class="headerlink" title="AQS成员变量"></a>AQS成员变量</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> <span class="keyword">volatile</span> Node head;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> <span class="keyword">volatile</span> Node tail;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">volatile</span> <span class="keyword">int</span> state;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>head</code>：指向<code>sync</code>队列的头部结点，初始指向<code>null</code>。由于<code>head</code>指向的是<code>傀儡</code>结点，所以在第一次向队列插入结点时，创建两个结点，分别是傀儡结点和插入结点。只能通过<code>setHead()</code>更新，即移除头部结点。</li>
+<li><code>tail</code>：指向<code>sync</code>队列的尾部结点，初始指向<code>null</code>。延迟初始化，只能通过<code>enq()</code>方法修改<code>tail</code>。</li>
+<li><code>state</code>：状态变量。由子类定义具体含义。比如<code>ReentrantLock</code>是重入度。</li>
+</ol>
+<p>上面这三个变量都是<code>volatile</code>类型，主要为了<code>可见性</code>。<br><code>head</code>和<code>tail</code>不能<code>序列化</code>，只有<code>state</code>能够<code>序列化</code>。</p>
+<h2 id="读写state变量的方法"><a href="#读写state变量的方法" class="headerlink" title="读写state变量的方法"></a>读写state变量的方法</h2><p>包含三个方法：</p>
+<ol>
+<li><code>getState()</code></li>
+<li><code>setState()</code></li>
+<li><code>compareAndSetState()</code></li>
+</ol>
+<h3 id="getState"><a href="#getState" class="headerlink" title="getState()"></a>getState()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">getState</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> state;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>volatile</code>读获取<code>state</code>变量的值。<code>volatile</code>写提供了获取锁的内存语义。<br>一般会在<code>tryAcquire()</code>中使用。</p>
+<h3 id="setState"><a href="#setState" class="headerlink" title="setState()"></a>setState()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setState</span><span class="params">(<span class="keyword">int</span> newState)</span> </span>&#123;</span><br><span class="line">        state = newState;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>设置<code>volatile</code>变量的值。<code>volatile</code>写提供了释放锁的内存语义。这个操作不是原子性性操作。<br>一般会在<code>tryRelease()</code>中使用。</p>
+<h3 id="compareAndSetState"><a href="#compareAndSetState" class="headerlink" title="compareAndSetState()"></a>compareAndSetState()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">compareAndSetState</span><span class="params">(<span class="keyword">int</span> expect, <span class="keyword">int</span> update)</span> </span>&#123;        </span><br><span class="line">        <span class="keyword">return</span> unsafe.compareAndSwapInt(<span class="keyword">this</span>, stateOffset, expect, update);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>CAS</code>原子更新<code>state</code>变量。同时提供<code>volatile</code>读和<code>volatile</code>写的内存语义。</p>
+<h3 id="AQS提供的内存语义"><a href="#AQS提供的内存语义" class="headerlink" title="AQS提供的内存语义"></a>AQS提供的内存语义</h3><p>对同一个<code>volatile</code>变量的读写提供了锁的内存语义：</p>
+<ol>
+<li><code>volatile</code>读具有获取锁的内存语义，即将线程的缓存置为无效，然后所有的共享变量都从内存读取。</li>
+<li><code>volatile</code>写具有释放锁的内存语义，即将所有共享变量的缓存最新值写入到内存中。</li>
+</ol>
+<p>而基于<code>AQS</code>类实现的同步工具：</p>
+<ol>
+<li>获取锁为<code>tryAcquire()</code>和<code>tryAcquireShared()</code>方法，里面第一句是<code>getState()</code>，即<code>volatile</code>读，提供了获取锁的内存语义。</li>
+<li>释放锁为<code>tryRelease()</code>和<code>tryReleaseShared()</code>方法，里面最后一句为<code>setState()</code>，即<code>volatile</code>写，提供了释放锁的内存语义。</li>
+</ol>
+<h2 id="sync队列的操作"><a href="#sync队列的操作" class="headerlink" title="sync队列的操作"></a>sync队列的操作</h2><p>对<code>sync队列</code>的基本操作(修改<code>head</code>或者<code>tail</code>) 包括：</p>
+<ol>
+<li><code>enq(node)</code>：将<code>node</code>插入到<code>sync</code>队列尾部。在<code>addWaiter()</code>中调用。</li>
+<li><code>addWaiter(mode)</code>：创建一个给定模式的结点，然后插入<code>sync</code>队列尾部。</li>
+<li><code>setHead()</code>：设置<code>head</code>指针，用于从头部<code>删除</code>结点。</li>
+<li><code>cancelAcquire(node)</code>：取消结点，将<code>node</code>从队列移除。</li>
+</ol>
+<h3 id="enq"><a href="#enq" class="headerlink" title="enq()"></a>enq()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> Node <span class="title">enq</span><span class="params">(<span class="keyword">final</span> Node node)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">            Node t = tail;</span><br><span class="line">	    <span class="comment">// 初始化状态 head == null tail == null</span></span><br><span class="line">	    <span class="comment">// 实现head和tail的延迟创建</span></span><br><span class="line">            <span class="keyword">if</span> (t == <span class="keyword">null</span>) &#123; <span class="comment">// Must initialize</span></span><br><span class="line">                <span class="keyword">if</span> (compareAndSetHead(<span class="keyword">new</span> Node()))</span><br><span class="line">                    tail = head;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// 队列非空</span></span><br><span class="line">                node.prev = t;</span><br><span class="line">                <span class="keyword">if</span> (compareAndSetTail(t, node)) &#123;</span><br><span class="line">                    t.next = node;</span><br><span class="line">                    <span class="keyword">return</span> t;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>enq(node)</code>，将<code>node</code>插入到<code>sync</code>队列尾部，放在一个死循环里面，一直到<code>cas</code>插入成功。<br>步骤如下：</p>
+<ol>
+<li>如果<code>tail == null</code>，则说明<code>head = tail = null</code>，<code>sync</code>队列还没有初始化，即傀儡结点还没有创建，则创建傀儡结点，<code>tail = head = new Node()</code>。然后继续循环。</li>
+<li>否则<code>tail != null</code>，则首先将置<code>node.prev = tail</code>，然后<code>CAS</code>更新<code>tail</code>，最后更新<code>next</code>指针。如果<code>CAS</code>失败了，则进行下一次循环，继续插入，知道成功。</li>
+</ol>
+<p>这是一种比较慢但是肯定能够成功的插入方法。<code>enq(node)</code>方法在<code>addWaiter()</code>方法中被调用。</p>
+<h3 id="addWaiter-mode"><a href="#addWaiter-mode" class="headerlink" title="addWaiter(mode)"></a>addWaiter(mode)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> Node <span class="title">addWaiter</span><span class="params">(Node mode)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 创建锁等待队列结点 初始状态为0</span></span><br><span class="line">        Node node = <span class="keyword">new</span> Node(Thread.currentThread(), mode);</span><br><span class="line">        <span class="comment">// Try the fast path of enq; backup to full enq on failure</span></span><br><span class="line">        Node pred = tail;<span class="comment">// volatile 读</span></span><br><span class="line">	<span class="comment">// tail != null  fastpath	</span></span><br><span class="line">        <span class="keyword">if</span> (pred != <span class="keyword">null</span>) &#123;</span><br><span class="line">            node.prev = pred;</span><br><span class="line">            <span class="keyword">if</span> (compareAndSetTail(pred, node)) &#123;</span><br><span class="line">                pred.next = node;</span><br><span class="line">                <span class="keyword">return</span> node;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">// tail == null</span></span><br><span class="line">        enq(node);</span><br><span class="line">        <span class="keyword">return</span> node;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>addWaiter()</code>创建一个新的结点，然后插入到队列中：</p>
+<ol>
+<li>按给定的<code>mode</code>，创建一个新的结点。</li>
+<li>尝试直接插入到<code>sync</code>队列，<code>CAS</code>更新<code>tail</code>成功，则返回。(<code>fastpath</code>)。</li>
+<li>如果<code>tail == null</code>或者<code>CAS</code>更新<code>tail</code>失败，则调用<code>enq()</code>插入。(<code>slowpath</code>)。</li>
+</ol>
+<h3 id="setHead-node"><a href="#setHead-node" class="headerlink" title="setHead(node)"></a>setHead(node)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">setHead</span><span class="params">(Node node)</span> </span>&#123;</span><br><span class="line">        head = node;</span><br><span class="line">        node.thread = <span class="keyword">null</span>;</span><br><span class="line">        node.prev = <span class="keyword">null</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>setHead(node)</code>方法，将<code>head</code>设置为<code>node</code>，然后由于<code>head</code>指向的是一个傀儡结点，所以将<code>thread</code>和<code>prev</code>都设置为<code>null</code>。</p>
+<h3 id="cancelAcquire-node"><a href="#cancelAcquire-node" class="headerlink" title="cancelAcquire(node)"></a>cancelAcquire(node)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">   <span class="comment">// 取消 锁(独占方式)的获取</span></span><br><span class="line">   <span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">cancelAcquire</span><span class="params">(Node node)</span> </span>&#123;</span><br><span class="line">       <span class="comment">// 如果node == null 直接返回</span></span><br><span class="line">       <span class="keyword">if</span> (node == <span class="keyword">null</span>)</span><br><span class="line">           <span class="keyword">return</span>;</span><br><span class="line">    </span><br><span class="line">       node.thread = <span class="keyword">null</span>;</span><br><span class="line"></span><br><span class="line">       <span class="comment">// Skip cancelled predecessors</span></span><br><span class="line"><span class="comment">// 跳过(移除) 取消结点(前驱) </span></span><br><span class="line">Node pred = node.prev;</span><br><span class="line">       <span class="keyword">while</span> (pred.waitStatus &gt; <span class="number">0</span>)</span><br><span class="line">           node.prev = pred = pred.prev;</span><br><span class="line"></span><br><span class="line">       <span class="comment">// unsplice 断开处 cas</span></span><br><span class="line">       Node predNext = pred.next;</span><br><span class="line"></span><br><span class="line">       <span class="comment">// 可以使用非原子更新 将结点状态置为cancelled</span></span><br><span class="line">       node.waitStatus = Node.CANCELLED;</span><br><span class="line"></span><br><span class="line">       <span class="comment">// If we are the tail, remove ourselves.</span></span><br><span class="line"><span class="comment">// 如果是tail 则直接移除自身</span></span><br><span class="line">       <span class="keyword">if</span> (node == tail &amp;&amp; compareAndSetTail(node, pred)) &#123;</span><br><span class="line">           compareAndSetNext(pred, predNext, <span class="keyword">null</span>);</span><br><span class="line">       &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">           <span class="comment">// If successor needs signal, try to set pred's next-link</span></span><br><span class="line">           <span class="comment">// so it will get one. Otherwise wake it up to propagate.</span></span><br><span class="line">           <span class="keyword">int</span> ws;</span><br><span class="line">    <span class="comment">// 前驱不是head  则直接移除</span></span><br><span class="line">           <span class="keyword">if</span> (pred != head &amp;&amp;</span><br><span class="line">               ((ws = pred.waitStatus) == Node.SIGNAL ||</span><br><span class="line">                (ws &lt;= <span class="number">0</span> &amp;&amp; compareAndSetWaitStatus(pred, ws, Node.SIGNAL))) &amp;&amp;</span><br><span class="line">               pred.thread != <span class="keyword">null</span>) &#123;</span><br><span class="line">               Node next = node.next;</span><br><span class="line">               <span class="keyword">if</span> (next != <span class="keyword">null</span> &amp;&amp; next.waitStatus &lt;= <span class="number">0</span>)</span><br><span class="line">                   compareAndSetNext(pred, predNext, next);</span><br><span class="line">           &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">	<span class="comment">// 前驱是head 则直接唤醒node的后继</span></span><br><span class="line">               unparkSuccessor(node);</span><br><span class="line">           &#125;</span><br><span class="line">    <span class="comment">// node自引用 方便gc</span></span><br><span class="line">           node.next = node; <span class="comment">// help GC</span></span><br><span class="line">       &#125;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果需要取消的结点<code>node == null</code>，则直接返回。</li>
+<li>将<code>node.thread = null</code>。因为接下来要从<code>sync</code>双链表中移除。</li>
+<li>找到第一个非取消的前驱结点<code>pred</code>，找到这个前驱是为了设置状态为<code>SIGNAL</code>，由此可以在之后唤醒<code>node.next</code>结点。</li>
+<li>如果<code>node == tail</code>，则直接更新<code>tail</code>为前驱，并且将前驱的<code>next</code>域指向<code>null</code>。</li>
+<li>否则如果<code>pred != head</code>，而且<code>pred</code>的状态为<code>SIGNAL</code>，后者<code>pred</code>状态不为<code>SIGNAL</code>但是<code>CAS</code>更新<code>pred</code>状态为<code>SIGNAL</code>成功，则将<code>pred.next = node.next</code>。即删除所有中间取消的结点。即<code>pred</code>的状态能设置为<code>SIGNAL</code>，保证删除以后的后继可以被唤醒，所以执行删除操作。</li>
+<li>否则<code>pred == null</code>，或者<code>pred</code>的状态更新<code>SIGNAL</code>失败，则唤醒<code>Node</code>的后继，由<code>unparkSuccessor(node.next)</code>来清理取消结点，以及在<code>acquirequeued()</code>方法中设置<code>node.next</code>的前驱状态为<code>SIGNAL</code>。即<code>pred</code>的状态不能设置为<code>SIGNAL</code>时，所以唤醒后继结点，延后删除和设置<code>pred</code>的<code>SIGNAL</code>状态。</li>
+</ol>
+<h3 id="保证sync队列并发操作正确性-待补充与确定"><a href="#保证sync队列并发操作正确性-待补充与确定" class="headerlink" title="保证sync队列并发操作正确性 (待补充与确定)"></a>保证sync队列并发操作正确性 (待补充与确定)</h3><ol>
+<li>并发调用<code>addWaiter()</code>，由于<code>enq()</code>中是一个循环，可以重复多次，直到插入成功。所以并发插入不会出错。</li>
+<li>插入和获取同时：由于是在<code>head</code>获取，在<code>tail</code>插入，所以不会出错。</li>
+<li>取消结点和插入：当取消的结点不再<code>tail</code>时，与插入操作不会出现错误。当取消的结点是<code>tail</code>时，由于<code>addWaiter()</code>的<code>enq()</code>可以重复多次，所以也能保持正确性。</li>
+<li>取消操作并发：每次取消获取的操作都是从当前结点开始寻找第一个非取消结点，这里也能保持正确性。</li>
+</ol>
+<h2 id="AQS需要子类实现的5种方法"><a href="#AQS需要子类实现的5种方法" class="headerlink" title="AQS需要子类实现的5种方法"></a>AQS需要子类实现的5种方法</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">tryAcquire</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">&#125;    </span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">tryRelease</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">int</span> <span class="title">tryAcquireShared</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">tryReleaseShared</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">&#125;    </span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">boolean</span> <span class="title">isHeldExclusively</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>tryAcquire(arg)</code>：尝试获取独占锁。获取成功返回<code>true</code>，失败返回<code>false</code>。在<code>acquire()</code>方法中被调用，如果返回<code>false</code>，则将其插入到<code>sync</code>队列中，阻塞，直到有线程释放了锁。如果<code>tryAcquire()</code>方法是<code>state</code>变量处于违法的值，则抛出<code>IllegalMonitorStateException</code>异常。</li>
+<li><code>tryRelease(arg)</code>：尝试释放独占锁。释放成功返回<code>true</code>，失败返回<code>false</code>。在<code>release()</code>方法中被调用，如果返回<code>true</code>，则唤醒<code>sync</code>队列中最前的结点(阻塞线程)。如果<code>tryRelease()</code>方法是<code>state</code>变量处于违法的值，则抛出<code>IllegalMonitorStateException</code>异常。</li>
+<li><code>tryAcquireShared(arg)</code>：尝试获取共享模式的锁。有三种返回值：1. 负数–获取失败 2. 0–获取成功，但是不能在传播唤醒后继(因为资源不够) 3. 正数–获取成功，而且可以传播唤醒后继。其实这里返回值大于等于0时，表示剩余可以获取的资源数。在<code>acquireShared()</code>方法中被调用，如果<code>tryAcquireShared(arg)</code>方法返回<code>负数</code>，则将其插入到<code>sync</code>队列中，阻塞，直到有线程释放了锁。如果<code>tryAcquireShared()</code>方法是<code>state</code>变量处于违法的值，则抛出<code>IllegalMonitorStateException</code>异常。</li>
+<li><code>tryReleaseShared(arg)</code>：尝试释放共享模式的锁。释放成功返回<code>true</code>，失败返回<code>false</code>。在<code>releaseShared()</code>方法中被调用，如果返回<code>true</code>，则唤醒<code>sync</code>队列中最前的结点(阻塞线程)。如果<code>tryReleaseShared()</code>方法是<code>state</code>变量处于违法的值，则抛出<code>IllegalMonitorStateException</code>异常。</li>
+<li><code>isHeldExclusively()</code>：返回<code>true</code>表示锁是被当前线程独占获取。否则返回<code>false</code>。</li>
+</ol>
+<p>上面这5种方法，在<code>AQS</code>中默认抛出<code>UnsupportedOperationException</code>异常。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/21/java-AQS-C-3/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(3)-独占模式">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/21/java-AQS-C-1/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(1)-Snode">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AQS成员变量"><span class="toc-text">AQS成员变量</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#读写state变量的方法"><span class="toc-text">读写state变量的方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#getState"><span class="toc-text">getState()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#setState"><span class="toc-text">setState()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#compareAndSetState"><span class="toc-text">compareAndSetState()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#AQS提供的内存语义"><span class="toc-text">AQS提供的内存语义</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#sync队列的操作"><span class="toc-text">sync队列的操作</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#enq"><span class="toc-text">enq()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#addWaiter-mode"><span class="toc-text">addWaiter(mode)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#setHead-node"><span class="toc-text">setHead(node)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cancelAcquire-node"><span class="toc-text">cancelAcquire(node)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#保证sync队列并发操作正确性-待补充与确定"><span class="toc-text">保证sync队列并发操作正确性 (待补充与确定)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#AQS需要子类实现的5种方法"><span class="toc-text">AQS需要子类实现的5种方法</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

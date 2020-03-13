@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        CyclicBarrier精读｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/26/java-CyclicBarrier/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>CyclicBarrier精读</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-26
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            CyclicBarrier精读
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>CyclicBarrier</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>CyclicBarrier</code>特征</li>
+<li><code>CyclicBarrier</code>与<code>CountDownLatch</code>的区别</li>
+<li>成员变量</li>
+<li>辅助方法</li>
+<li><code>CyclicBarrier</code>构造方法</li>
+<li><code>CyclicBarrier</code>其它方法</li>
+</ol>
+<h2 id="CyclicBarrier特征"><a href="#CyclicBarrier特征" class="headerlink" title="CyclicBarrier特征"></a>CyclicBarrier特征</h2><ol>
+<li>栅栏定义：一个同步工具，实现多个线程相互等待，直到到达一个<code>栅栏点</code>，所有线程才开始执行。</li>
+<li>栅栏可以重复使用，每当栅栏完成，或者栅栏取消时，都会重置栅栏。</li>
+<li>栅栏其中一个构造方法中可以指定当所有线程到达<code>栅栏点</code>之后的操作<code>Runabble</code>。</li>
+<li>栅栏的<code>await()</code>方法的返回值，表示当前线程加入<code>CONDITION</code>队列时，剩余需要参与的线程数。</li>
+<li>只要有其中一个调用<code>await()</code>方法的线程，被<code>中断</code>、<code>失败</code>或者<code>超时</code>，则调用<code>breakBarrier()</code>取消栅栏，唤醒所有阻塞的线程。并且这些被唤醒的线程抛出<code>BrokenBarrierException</code>。</li>
+<li>内存一致性(<code>happen-before</code>)：<br>6.1 线程调用<code>await()</code>方法之前的操作，对于到达栅栏点时的<code>Runnable</code>操作可见。<br>6.2 到达栅栏点时的<code>Runnable</code>，对于所有<code>CONDITION</code>队列中被唤醒的线程在<code>await()</code>之后的操作可见。</li>
+</ol>
+<p>这里第六条的<code>内存一致性</code>，即共享变量的可见性由<code>ReentrantLock</code>保证。</p>
+<h2 id="CyclicBarrier与CountDownLatch的区别"><a href="#CyclicBarrier与CountDownLatch的区别" class="headerlink" title="CyclicBarrier与CountDownLatch的区别"></a>CyclicBarrier与CountDownLatch的区别</h2><h3 id="定义"><a href="#定义" class="headerlink" title="定义"></a>定义</h3><ol>
+<li><code>CountDownLatch</code>定义：一个或者多个线程，等待另外<code>N</code>个线程完成某个事件后才执行。</li>
+<li><code>CyclicBarrier</code>定义：实现多个线程相互等待，直到到达一个<code>栅栏点</code>，所有线程才开始执行。</li>
+</ol>
+<h3 id="区别"><a href="#区别" class="headerlink" title="区别"></a>区别</h3><p><code>CyclicBarrier</code>与<code>CountDownLatch</code>包含两个区别：</p>
+<ol>
+<li><code>CyclicBarrier</code>是相互等待，<code>CountDownLatch</code>是一组线程等待另外一组线程完成操作后才执行。</li>
+<li><code>CyclicBarrier</code>每次完成之后会自动重置，可以重复使用。而<code>CountDownLatch</code>是一个闭锁，当一组线程执行完操作，这个闭锁一直开始开启。</li>
+</ol>
+<h2 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">static</span> <span class="class"><span class="keyword">class</span> <span class="title">Generation</span> </span>&#123;</span><br><span class="line">    <span class="keyword">boolean</span> broken = <span class="keyword">false</span>;</span><br><span class="line">&#125;</span><br><span class="line">	</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition trip = lock.newCondition();    </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> parties;    </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Runnable barrierCommand;</span><br><span class="line"><span class="keyword">private</span> Generation generation = <span class="keyword">new</span> Generation();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">int</span> count;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>lock</code>：独占锁。</li>
+<li><code>trip</code>：<code>CONDITION</code>等待队列。</li>
+<li><code>parties</code>：参与栅栏的线程数目。</li>
+<li><code>barrierCommand</code>：到达栅栏点之后需要执行的任务。构造方法中可选。</li>
+<li><code>generation</code>：栅栏是否<code>broken</code>的状态，默认<code>false</code>。在正常完成中创建。在取消(<code>broke</code>)时重置为<code>false</code>。</li>
+<li><code>count</code>：还需要到达栅栏的线程数。开始时为<code>parties</code>。</li>
+</ol>
+<h2 id="辅助方法"><a href="#辅助方法" class="headerlink" title="辅助方法"></a>辅助方法</h2><ol>
+<li><code>nextGeneration()</code></li>
+<li><code>breakBarrier()</code></li>
+<li><code>dowait()</code></li>
+</ol>
+<h3 id="nextGeneration"><a href="#nextGeneration" class="headerlink" title="nextGeneration()"></a>nextGeneration()</h3><p><code>nextGeneration()</code>：这个方法在当所有线程都到达栅栏之后被调用，唤醒<code>CONDITION</code>队列所有阻塞线程，然后指向<code>Runnable</code>，最后重置<code>CyclicBarrier</code>，为下一次的使用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">nextGeneration</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="comment">// signal completion of last generation</span></span><br><span class="line">        trip.signalAll();</span><br><span class="line">        <span class="comment">// set up next generation</span></span><br><span class="line">        count = parties;</span><br><span class="line">	<span class="comment">// 新的栅栏状态</span></span><br><span class="line">        generation = <span class="keyword">new</span> Generation();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>唤醒所有在阻塞在<code>CONDITION</code>队列中的线程。</li>
+<li>将<code>count</code>重置为<code>parties</code>。</li>
+<li>新建<code>generation</code>，默认<code>broken</code>为<code>false</code>。</li>
+</ol>
+<h3 id="breakBarrier"><a href="#breakBarrier" class="headerlink" title="breakBarrier()"></a>breakBarrier()</h3><p><code>breakBarrier()</code>：取消(<code>broken</code>)栅栏。当一个线程被<code>中断</code>、<code>失败</code>或者等待超时时，被调用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">breakBarrier</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        generation.broken = <span class="keyword">true</span>;</span><br><span class="line">        count = parties;</span><br><span class="line">        trip.signalAll();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>将<code>broken</code>状态设置为<code>true</code>。</li>
+<li>将<code>count</code>重置为<code>parties</code>。</li>
+<li>唤醒所有阻塞在<code>CONDITION</code>队列中的线程。</li>
+</ol>
+<h2 id="dowait"><a href="#dowait" class="headerlink" title="dowait()"></a>dowait()</h2><p><code>dowait()</code>：是<code>CyclicBarrier</code>中的核心方法，被<code>await()</code>方法调用。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">int</span> <span class="title">dowait</span><span class="params">(<span class="keyword">boolean</span> timed, <span class="keyword">long</span> nanos)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException, BrokenBarrierException,</span></span><br><span class="line"><span class="function">               TimeoutException </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">	<span class="comment">// 获取独占锁</span></span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 获取栅栏状态</span></span><br><span class="line">            <span class="keyword">final</span> Generation g = generation;</span><br><span class="line"></span><br><span class="line">	    <span class="comment">// 如果其它线程因为中断或者超时 破坏了栅栏</span></span><br><span class="line">	    <span class="comment">// 则抛出BrokenBarrierException异常</span></span><br><span class="line">            <span class="keyword">if</span> (g.broken)</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> BrokenBarrierException();</span><br><span class="line"></span><br><span class="line">	    <span class="comment">// 如果当前线程已经被中断 则调用breakBarrier() 破坏栅栏</span></span><br><span class="line">	    <span class="comment">// 并且抛出InterruptedException异常</span></span><br><span class="line">            <span class="keyword">if</span> (Thread.interrupted()) &#123;</span><br><span class="line">                breakBarrier();</span><br><span class="line">                <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">	   <span class="comment">// 减小count</span></span><br><span class="line">           <span class="keyword">int</span> index = --count;</span><br><span class="line">	   <span class="comment">// 到达栅栏执行点</span></span><br><span class="line">           <span class="keyword">if</span> (index == <span class="number">0</span>) &#123;  <span class="comment">// tripped</span></span><br><span class="line">               <span class="keyword">boolean</span> ranAction = <span class="keyword">false</span>;</span><br><span class="line">               <span class="keyword">try</span> &#123;</span><br><span class="line">                   <span class="keyword">final</span> Runnable command = barrierCommand;</span><br><span class="line">		   <span class="comment">// 执行barrierCommand</span></span><br><span class="line">                   <span class="keyword">if</span> (command != <span class="keyword">null</span>)</span><br><span class="line">                       command.run();</span><br><span class="line">                   ranAction = <span class="keyword">true</span>;</span><br><span class="line">		   <span class="comment">// 唤醒所有线程 重置barrier</span></span><br><span class="line">                   nextGeneration();</span><br><span class="line">                   <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">               &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">		   <span class="comment">// try中发生错误 则破坏栅栏</span></span><br><span class="line">                   <span class="keyword">if</span> (!ranAction)</span><br><span class="line">                       breakBarrier();</span><br><span class="line">               &#125;</span><br><span class="line">           &#125;</span><br><span class="line">            </span><br><span class="line">	    <span class="comment">// 否则还没有到栅栏执行点 则加入到CONDITION队列中 </span></span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                <span class="keyword">try</span> &#123;</span><br><span class="line">		    <span class="comment">// 非timeout版本</span></span><br><span class="line">                    <span class="keyword">if</span> (!timed)</span><br><span class="line">                        trip.await();<span class="comment">// 加入到CONDITION队列中</span></span><br><span class="line">                    <span class="keyword">else</span> <span class="keyword">if</span> (nanos &gt; <span class="number">0L</span>)</span><br><span class="line">                        nanos = trip.awaitNanos(nanos);<span class="comment">// 限时等待版本</span></span><br><span class="line">                &#125; <span class="keyword">catch</span> (InterruptedException ie) &#123;</span><br><span class="line">		    <span class="comment">// 在等待期间发生中断 栅栏状态没有改变</span></span><br><span class="line">		    <span class="comment">// 则取消栅栏 抛出InterruptedException</span></span><br><span class="line">                    <span class="keyword">if</span> (g == generation &amp;&amp; ! g.broken) &#123;</span><br><span class="line">                        breakBarrier();</span><br><span class="line">                        <span class="keyword">throw</span> ie;</span><br><span class="line">                    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                        <span class="comment">// 其它线程取消了栅栏 所以当前线程恢复中断标志</span></span><br><span class="line">                        Thread.currentThread().interrupt();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果其它线程因为中断或者超时 破坏了栅栏</span></span><br><span class="line">		<span class="comment">// 则抛出BrokenBarrierException异常</span></span><br><span class="line">                <span class="keyword">if</span> (g.broken)</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> BrokenBarrierException();</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 如果栅栏状态发生改变 则返回剩余的parties</span></span><br><span class="line">                <span class="keyword">if</span> (g != generation)</span><br><span class="line">                    <span class="keyword">return</span> index;</span><br><span class="line"></span><br><span class="line">		<span class="comment">// 当前线程超时 则取消栅栏 抛出TimeoutException </span></span><br><span class="line">                <span class="keyword">if</span> (timed &amp;&amp; nanos &lt;= <span class="number">0L</span>) &#123;</span><br><span class="line">                    breakBarrier();</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> TimeoutException();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>首先获取<code>lock</code>独占锁，如果不能获取则阻塞。</li>
+<li>如果栅栏已经损坏(<code>broken</code>)，则抛出<code>BrokenBarrierException</code>异常。</li>
+<li>如果当前线程被中断，则调用<code>breakBarrier()</code>取消栅栏，然后抛出<code>InterruptedException</code>。</li>
+<li>减小<code>count</code>。</li>
+<li>如果减小后<code>count == 0</code>，则说明所有线程到达<code>栅栏点</code>，执行<code>Runnable</code>操作，完成后调用<code>nextGeneration()</code>，唤醒所有线程，并且重置栅栏。</li>
+<li>否则<code>count &gt; 0</code>，则调用<code>trip.await()</code>方法插入到<code>CONDITION</code>队列阻塞。</li>
+<li>如果线程被唤醒后，如果是被中断唤醒，则检查是否要损坏栅栏。</li>
+<li>如果线程正常唤醒，但是栅栏状态为<code>broken</code>，则抛出<code>BrokenBarrierException</code>异常。</li>
+<li>线程由超时唤醒，则调用<code>breakBarrier()</code>损坏线程，抛出<code>TimeoutException</code>异常。</li>
+<li>否则返回<code>index</code>，当当前线程阻塞时，还需要加入栅栏的线程数量。</li>
+</ol>
+<h2 id="CyclicBarrier构造方法"><a href="#CyclicBarrier构造方法" class="headerlink" title="CyclicBarrier构造方法"></a>CyclicBarrier构造方法</h2><p><code>CyclicBarrier</code>有两个构造方法：</p>
+<ol>
+<li>指定<code>Runabble</code>操作的构造方法。</li>
+<li>不指定<code>Runabble</code>操作的构造方法，默认<code>Runnable = null</code>。</li>
+</ol>
+<h3 id="指定runnable"><a href="#指定runnable" class="headerlink" title="指定runnable"></a>指定runnable</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">CyclicBarrier</span><span class="params">(<span class="keyword">int</span> parties, Runnable barrierAction)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (parties &lt;= <span class="number">0</span>) <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line">        <span class="keyword">this</span>.parties = parties;</span><br><span class="line">        <span class="keyword">this</span>.count = parties;</span><br><span class="line">        <span class="keyword">this</span>.barrierCommand = barrierAction;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>初始化<code>parties</code>、<code>count</code>和<code>barrierCommand</code>。</p>
+<h3 id="不指定runnable"><a href="#不指定runnable" class="headerlink" title="不指定runnable"></a>不指定runnable</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">CyclicBarrier</span><span class="params">(<span class="keyword">int</span> parties)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>(parties, <span class="keyword">null</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>runnable</code>默认为<code>null</code>。</p>
+<h2 id="CyclicBarrier其它方法"><a href="#CyclicBarrier其它方法" class="headerlink" title="CyclicBarrier其它方法"></a>CyclicBarrier其它方法</h2><ol>
+<li><code>getParties()</code></li>
+<li><code>await()</code></li>
+<li><code>await()</code>的<code>timeout</code>版本</li>
+<li><code>isBroken()</code></li>
+<li><code>reset()</code></li>
+<li><code>getNumberWaiting()</code></li>
+</ol>
+<h3 id="getParties"><a href="#getParties" class="headerlink" title="getParties()"></a>getParties()</h3><p><code>getParties()</code>：返回需要参与栅栏的线程总数目。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getParties</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> parties;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="await"><a href="#await" class="headerlink" title="await()"></a>await()</h3><p><code>await()</code>：加入到栅栏的<code>CONDITION</code>等待队列，等待所有线程都到达栅栏时被唤醒。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">await</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException, BrokenBarrierException </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> dowait(<span class="keyword">false</span>, <span class="number">0L</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (TimeoutException toe) &#123;</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> Error(toe); <span class="comment">// cannot happen;</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>await()</code>方法会抛出2个异常：</p>
+<ol>
+<li>当线程在等待过程中被其它线程<code>中断</code>，则抛出<code>InterruptedException</code>异常。</li>
+<li>当其它线程因为中断、失败或者超时，将栅栏损坏，则当前线程调用<code>await()</code>时抛出<code>BrokenBarrierException</code>异常。</li>
+</ol>
+<h3 id="await-的timeout版本"><a href="#await-的timeout版本" class="headerlink" title="await()的timeout版本"></a>await()的timeout版本</h3><p><code>await()</code>的限时版本。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">await</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException,</span></span><br><span class="line"><span class="function">               BrokenBarrierException,</span></span><br><span class="line"><span class="function">               TimeoutException </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> dowait(<span class="keyword">true</span>, unit.toNanos(timeout));</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>会抛出2个异常：</p>
+<ol>
+<li>当线程在等待过程中被其它线程<code>中断</code>，则抛出<code>InterruptedException</code>异常。</li>
+<li>当其它线程因为中断、失败或者超时，将栅栏损坏，则当前线程调用<code>await()</code>时抛出<code>BrokenBarrierException</code>异常。</li>
+<li>当当前线程等待超过<code>timeout</code>时，则抛出<code>TimeoutException</code>异常。</li>
+</ol>
+<h3 id="isBroken"><a href="#isBroken" class="headerlink" title="isBroken()"></a>isBroken()</h3><p><code>isBroken()</code>：判断栅栏的状态是否为损坏。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">isBroken</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> generation.broken;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="reset"><a href="#reset" class="headerlink" title="reset()"></a>reset()</h3><p><code>reset()</code>：重置栅栏。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">reset</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            breakBarrier();   <span class="comment">// break the current generation</span></span><br><span class="line">            nextGeneration(); <span class="comment">// start a new generation</span></span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>损坏栅栏。</li>
+<li>唤醒所有阻塞的线程，重置参数。</li>
+</ol>
+<h3 id="getNumberWaiting"><a href="#getNumberWaiting" class="headerlink" title="getNumberWaiting()"></a>getNumberWaiting()</h3><p><code>getNumberWaiting()</code>：返回处于栅栏<code>CONDITION</code>等待队列的线程。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">getNumberWaiting</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">return</span> parties - count;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看出<code>isBroken()</code>、<code>reset()</code>和<code>getNumberWaiting()</code>都要先占用独占锁才能操作。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/27/java-CountDownLatch/" data-toggle="tooltip" data-placement="top"
+                           title="CountDownLatch精读">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/24/java-ReentrantLock-2/" data-toggle="tooltip" data-placement="top"
+                           title="ReentrantLock精读(2)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CyclicBarrier特征"><span class="toc-text">CyclicBarrier特征</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CyclicBarrier与CountDownLatch的区别"><span class="toc-text">CyclicBarrier与CountDownLatch的区别</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#定义"><span class="toc-text">定义</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#区别"><span class="toc-text">区别</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#辅助方法"><span class="toc-text">辅助方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#nextGeneration"><span class="toc-text">nextGeneration()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#breakBarrier"><span class="toc-text">breakBarrier()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#dowait"><span class="toc-text">dowait()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CyclicBarrier构造方法"><span class="toc-text">CyclicBarrier构造方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#指定runnable"><span class="toc-text">指定runnable</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#不指定runnable"><span class="toc-text">不指定runnable</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#CyclicBarrier其它方法"><span class="toc-text">CyclicBarrier其它方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#getParties"><span class="toc-text">getParties()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#await"><span class="toc-text">await()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#await-的timeout版本"><span class="toc-text">await()的timeout版本</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isBroken"><span class="toc-text">isBroken()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#reset"><span class="toc-text">reset()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#getNumberWaiting"><span class="toc-text">getNumberWaiting()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

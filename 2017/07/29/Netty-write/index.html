@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Netty-write过程｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/07/29/Netty-write/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Netty-write过程</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-07-29
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Netty-write过程
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p><code>netty</code>中向<code>SocketChannel</code>写入数据，即向另一台主机发送数据的过程分为两部分：</p>
+<ol>
+<li><code>ctx.write()</code>：将<code>ByteBuf</code>缓存在<code>channel</code>的<code>ChannelOutboundBuffer</code>中。</li>
+<li><code>ctx.flush()</code>：将<code>ChannelOutboundBuffer</code>缓存的数据尝试全部写入<code>Socketchannel</code>中。</li>
+</ol>
+<h2 id="ctx-write"><a href="#ctx-write" class="headerlink" title="ctx.write()"></a>ctx.write()</h2><p><code>ctx.write()</code>是一个出站事件，所以最后被<code>head</code>拦截。调用<code>head</code>中的<code>unsafe.write()</code>方法。这个<code>unsafe</code>是<code>AbstractChannel.AbstractUnsafe</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// write(出站事件) 在head处调用 </span></span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">write</span><span class="params">(Object msg, ChannelPromise promise)</span> </span>&#123;</span><br><span class="line">            </span><br><span class="line">            ChannelOutboundBuffer outboundBuffer = <span class="keyword">this</span>.outboundBuffer;</span><br><span class="line">            <span class="keyword">if</span> (outboundBuffer == <span class="keyword">null</span>) &#123;</span><br><span class="line">                safeSetFailure(promise, WRITE_CLOSED_CHANNEL_EXCEPTION);</span><br><span class="line">                <span class="comment">// release message now to prevent resource-leak</span></span><br><span class="line">                ReferenceCountUtil.release(msg);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">int</span> size;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">		<span class="comment">// 写入出站 过滤</span></span><br><span class="line">		<span class="comment">// filterOutboundMessage()方法在AbstractNioChannel中被重写</span></span><br><span class="line">		<span class="comment">// 由于写入channel时 directByteBuf要比HeapByteBuf要快</span></span><br><span class="line">		<span class="comment">// 1. msg是DirectByteBuf的 则直接返回ByteBuf</span></span><br><span class="line">		<span class="comment">// 2. msg是HeapByteBuf的 则创建新的DirectByteBuf 并且复制内容 </span></span><br><span class="line">                msg = filterOutboundMessage(msg); <span class="comment">// 1</span></span><br><span class="line">                size = pipeline.estimatorHandle().size(msg); <span class="comment">//2</span></span><br><span class="line">                <span class="keyword">if</span> (size &lt; <span class="number">0</span>) &#123;</span><br><span class="line">                    size = <span class="number">0</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                safeSetFailure(promise, t);</span><br><span class="line">                ReferenceCountUtil.release(msg);</span><br><span class="line">                <span class="keyword">return</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            outboundBuffer.addMessage(msg, size, promise);<span class="comment">//3</span></span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>filterOutboundMessage()</code>过滤掉<code>DirectByteBuf</code>和<code>FileRegion</code>，或者将<code>HeadByteBuf</code>转换为<code>DirectByteBuf</code>。因为使用<code>堆外内存</code>写入<code>channel</code>，效率更高。</li>
+<li><code>pipeline.estimatorHandle().size(msg)</code>：估计<code>size</code>。</li>
+<li>最后调用<code>outboundBuffer.addMessage()</code>方法将<code>msg</code>插入到<code>entry</code>单链表中。</li>
+</ol>
+<h3 id="filterOutboundMessage"><a href="#filterOutboundMessage" class="headerlink" title="filterOutboundMessage()"></a>filterOutboundMessage()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 将msg 改为DirectByteBuf 或者 原本就是FileRegion</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> Object <span class="title">filterOutboundMessage</span><span class="params">(Object msg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (msg <span class="keyword">instanceof</span> ByteBuf) &#123;</span><br><span class="line">            ByteBuf buf = (ByteBuf) msg;</span><br><span class="line">            <span class="keyword">if</span> (buf.isDirect()) &#123;</span><br><span class="line">                <span class="keyword">return</span> msg;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">            <span class="keyword">return</span> newDirectBuffer(buf);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (msg <span class="keyword">instanceof</span> FileRegion) &#123;</span><br><span class="line">            <span class="keyword">return</span> msg;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> UnsupportedOperationException(</span><br><span class="line">                <span class="string">"unsupported message type: "</span> +</span><br><span class="line">		StringUtil.simpleClassName(msg) + EXPECTED_TYPES);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="ctx-flush"><a href="#ctx-flush" class="headerlink" title="ctx.flush()"></a>ctx.flush()</h2><p><code>ctx.flush()</code>也是一个出站事件，最后被<code>head</code>拦截。调用<code>AbstractChannel.AbstractUnsafe.flush()</code>方法。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@Override</span></span><br><span class="line">       <span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">flush</span><span class="params">()</span> </span>&#123;</span><br><span class="line">           assertEventLoop();</span><br><span class="line"></span><br><span class="line">           ChannelOutboundBuffer outboundBuffer = <span class="keyword">this</span>.outboundBuffer;</span><br><span class="line">           <span class="keyword">if</span> (outboundBuffer == <span class="keyword">null</span>) &#123;</span><br><span class="line">               <span class="keyword">return</span>;</span><br><span class="line">           &#125;</span><br><span class="line"></span><br><span class="line">           outboundBuffer.addFlush();</span><br><span class="line">           flush0();</span><br><span class="line">       &#125;</span><br></pre></td></tr></table></figure>
+<p>主要包含两个步骤：</p>
+<ol>
+<li><code>outboundBuffer.addFlush()</code>：遍历<code>entry</code>单链表，标记取消的<code>entry</code>，将<code>unflushedEntry = null</code>，准备开始写入。</li>
+<li><code>flush0()</code>：写入<code>SocketChannel</code>。</li>
+</ol>
+<h3 id="flush0"><a href="#flush0" class="headerlink" title="flush0()"></a>flush0()</h3><p><code>flush0()</code>最后调用<code>NioSocketChannel.doWrite()</code>方法完成写入。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 从flush0()处调用</span></span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">doWrite</span><span class="params">(ChannelOutboundBuffer in)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">        <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">	    <span class="comment">// entry个数</span></span><br><span class="line">            <span class="keyword">int</span> size = in.size();</span><br><span class="line">            <span class="keyword">if</span> (size == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="comment">// All written so clear OP_WRITE</span></span><br><span class="line">                clearOpWrite();</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">	    <span class="comment">// 需要写入的字节数</span></span><br><span class="line">            <span class="keyword">long</span> writtenBytes = <span class="number">0</span>;</span><br><span class="line">            <span class="keyword">boolean</span> done = <span class="keyword">false</span>;</span><br><span class="line">	    <span class="comment">// 设置OP_WRITE</span></span><br><span class="line">            <span class="keyword">boolean</span> setOpWrite = <span class="keyword">false</span>;</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Ensure the pending writes are made of ByteBufs only.</span></span><br><span class="line">	    <span class="comment">// nioBUffers()方法将entry中的ByteBuf转换成ByetBuffer数组</span></span><br><span class="line">            ByteBuffer[] nioBuffers = in.nioBuffers();</span><br><span class="line">	    <span class="comment">// 数组中有效的ByteBuffer个数</span></span><br><span class="line">            <span class="keyword">int</span> nioBufferCnt = in.nioBufferCount();</span><br><span class="line">	    <span class="comment">// 需要写入的字节数</span></span><br><span class="line">            <span class="keyword">long</span> expectedWrittenBytes = in.nioBufferSize();</span><br><span class="line">	    <span class="comment">// SocketChannel</span></span><br><span class="line">	    SocketChannel ch = javaChannel();</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Always us nioBuffers() to workaround data-corruption.</span></span><br><span class="line">            <span class="comment">// See https://github.com/netty/netty/issues/2761</span></span><br><span class="line">            <span class="keyword">switch</span> (nioBufferCnt) &#123;</span><br><span class="line">                <span class="keyword">case</span> <span class="number">0</span>:</span><br><span class="line">                     <span class="comment">//没有数据写入</span></span><br><span class="line">                    <span class="keyword">super</span>.doWrite(in);</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                <span class="keyword">case</span> <span class="number">1</span>:</span><br><span class="line">                    <span class="comment">// 只有1个ByteBuf需要写入</span></span><br><span class="line">                    ByteBuffer nioBuffer = nioBuffers[<span class="number">0</span>];</span><br><span class="line">                    <span class="keyword">for</span> (<span class="keyword">int</span> i = config().getWriteSpinCount() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i --) &#123;</span><br><span class="line">                        <span class="keyword">final</span> <span class="keyword">int</span> localWrittenBytes = ch.write(nioBuffer);</span><br><span class="line">                        <span class="keyword">if</span> (localWrittenBytes == <span class="number">0</span>) &#123;</span><br><span class="line">                            setOpWrite = <span class="keyword">true</span>;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                        expectedWrittenBytes -= localWrittenBytes;</span><br><span class="line">                        writtenBytes += localWrittenBytes;</span><br><span class="line">                        <span class="keyword">if</span> (expectedWrittenBytes == <span class="number">0</span>) &#123;</span><br><span class="line">                            done = <span class="keyword">true</span>;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">		    <span class="comment">//数组有效元素超过一个 则需要遍历</span></span><br><span class="line">	          <span class="keyword">default</span>:</span><br><span class="line">                    <span class="keyword">for</span> (<span class="keyword">int</span> i = config().getWriteSpinCount() - <span class="number">1</span>; i &gt;= <span class="number">0</span>; i --) &#123;</span><br><span class="line">                        <span class="keyword">final</span> <span class="keyword">long</span> localWrittenBytes = ch.write(nioBuffers,</span><br><span class="line">								<span class="number">0</span>, nioBufferCnt);</span><br><span class="line">                        <span class="keyword">if</span> (localWrittenBytes == <span class="number">0</span>) &#123;</span><br><span class="line">                            setOpWrite = <span class="keyword">true</span>;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                        expectedWrittenBytes -= localWrittenBytes;</span><br><span class="line">                        writtenBytes += localWrittenBytes;</span><br><span class="line">                        <span class="keyword">if</span> (expectedWrittenBytes == <span class="number">0</span>) &#123;</span><br><span class="line">                            done = <span class="keyword">true</span>;</span><br><span class="line">                            <span class="keyword">break</span>;</span><br><span class="line">                        &#125;</span><br><span class="line">                    &#125;</span><br><span class="line">                    <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line"></span><br><span class="line">	    <span class="comment">// 清理entry链表和NIO_BUFFERS</span></span><br><span class="line">            in.removeBytes(writtenBytes);</span><br><span class="line"></span><br><span class="line">            <span class="keyword">if</span> (!done) &#123;</span><br><span class="line">                <span class="comment">// Did not write all buffers completely.</span></span><br><span class="line">                incompleteWrite(setOpWrite);</span><br><span class="line">                <span class="keyword">break</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>主要有四个过程：</p>
+<ol>
+<li>调用<code>in.nioBuffers()</code>将<code>entry</code>中的<code>ByteBuf</code>转化成<code>ByteBuffer</code>数组。</li>
+<li>将<code>ByteBuffer</code>数组写入到<code>SocketChannel</code>中。如果写入数据为<code>0</code>，则将<code>setOpWrite</code>设置为<code>true</code>。如果<code>ByteBuffer</code>数组中的数据全部写入，则<code>done</code>设置为<code>true</code>。</li>
+<li>写入后的清理工作，调用<code>in.removeBytes()</code>清除写入的<code>entry</code>项，以及清除<code>ByteBuffer</code>数组(<code>FastThreadLocal</code>)。</li>
+<li>如果<code>done = false</code>，则表明数据未完全写入。如果<code>setOpWrite = true</code>，则添加<code>selector</code>关注事件<code>OP_WRITE</code>。并且将<code>flush()</code>任务添加到当前<code>ebentloop</code>中等待后序写入。<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// NioSocketChannel dowrite()未完全写入所有数据时 最后被调用</span></span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">incompleteWrite</span><span class="params">(<span class="keyword">boolean</span> setOpWrite)</span> </span>&#123;</span><br><span class="line">        <span class="comment">// Did not write completely.</span></span><br><span class="line">        <span class="keyword">if</span> (setOpWrite) &#123;</span><br><span class="line">	    <span class="comment">//设置OP_WRITE  </span></span><br><span class="line">            setOpWrite();</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// Schedule flush again later so other tasks can be picked up in the meantime</span></span><br><span class="line">	    <span class="comment">// 添加flush 任务</span></span><br><span class="line">	    Runnable flushTask = <span class="keyword">this</span>.flushTask;</span><br><span class="line">            <span class="keyword">if</span> (flushTask == <span class="keyword">null</span>) &#123;</span><br><span class="line">                flushTask = <span class="keyword">this</span>.flushTask = <span class="keyword">new</span> Runnable() &#123;</span><br><span class="line">                    <span class="meta">@Override</span></span><br><span class="line">                    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">run</span><span class="params">()</span> </span>&#123;</span><br><span class="line">                        flush();</span><br><span class="line">                    &#125;</span><br><span class="line">                &#125;;</span><br><span class="line">            &#125;</span><br><span class="line">            eventLoop().execute(flushTask);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="function"><span class="keyword">protected</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">setOpWrite</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> SelectionKey key = selectionKey();</span><br><span class="line">        <span class="comment">// Check first if the key is still valid as it may be canceled as part of the deregistration</span></span><br><span class="line">        <span class="comment">// from the EventLoop</span></span><br><span class="line">        <span class="comment">// See https://github.com/netty/netty/issues/2104</span></span><br><span class="line">        <span class="keyword">if</span> (!key.isValid()) &#123;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">final</span> <span class="keyword">int</span> interestOps = key.interestOps();</span><br><span class="line">        <span class="keyword">if</span> ((interestOps &amp; SelectionKey.OP_WRITE) == <span class="number">0</span>) &#123;</span><br><span class="line">            key.interestOps(interestOps | SelectionKey.OP_WRITE);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>所以从中看出，向<code>selector</code>添加关注<code>OP_WRITE</code>的时机是<code>ctx.flush()</code>时，向<code>SocketChannel</code>写入数据字节数为<code>0</code>时被触发。为的是在<code>SocketChannel</code>的<code>写缓冲区空闲空间到达通知水位时</code>，将<code>selector</code>中的<code>OP_WRITE</code>事件设置为就绪。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/04/Netty-close/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-连接关闭过程">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/07/28/Netty-read/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-read过程">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ctx-write"><span class="toc-text">ctx.write()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#filterOutboundMessage"><span class="toc-text">filterOutboundMessage()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ctx-flush"><span class="toc-text">ctx.flush()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#flush0"><span class="toc-text">flush0()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

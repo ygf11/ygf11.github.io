@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        AQS精读(3)-独占模式｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/21/java-AQS-C-3/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>AQS精读(3)-独占模式</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-21
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            AQS精读(3)-独占模式
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>AbstractQueuedSynchronizer</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>独占模式获取和释放用到的方法</li>
+<li>忽略中断的获取(<code>acquire(arg)</code>)</li>
+<li><code>release(arg)</code></li>
+<li>响应中断的获取<code>acquireInterruptibly(arg)</code></li>
+<li><code>timeout</code>版本的<code>tryAcquireNanos(arg, timeout)</code></li>
+</ol>
+<h2 id="独占模式获取和释放用到的方法"><a href="#独占模式获取和释放用到的方法" class="headerlink" title="独占模式获取和释放用到的方法"></a>独占模式获取和释放用到的方法</h2><p>包含4个方法：</p>
+<ol>
+<li><code>shouldParkAfterFailedAcquire(pred, node)</code></li>
+<li><code>parkAndCheckInterrupt()</code></li>
+<li><code>selfInterrupt()</code></li>
+<li><code>unparkSuccessor(node)</code></li>
+</ol>
+<h3 id="shouldParkAfterFailedAcquire-pred-node"><a href="#shouldParkAfterFailedAcquire-pred-node" class="headerlink" title="shouldParkAfterFailedAcquire(pred, node)"></a>shouldParkAfterFailedAcquire(pred, node)</h3><p>这个方法在<code>acquireXXX()</code>方法中被调用，判断当前线程(结点)是否需要阻塞。<br>分为三种情况：</p>
+<ol>
+<li>前驱结点的状态为<code>SIGNAL</code>，则直接返回<code>true</code>，表示可以阻塞。因为前驱的状态为<code>SIGNAL</code>，所以前驱释放后，会保证唤醒后继，这样后继结点的阻塞是安全的。</li>
+<li>前驱结点的状态为<code>CANCELLED = 1</code>，则向前遍历，找到第一个非取消的结点<code>pred</code>，然后使<code>pred.next = node</code>，返回<code>false</code>。即等到下一次调用<code>shouldParkAfterFailedAcquire()</code>方法时再将前驱的状态置为<code>SIGNAL</code>，因为删除了一些取消结点，可能不用阻塞就可以等到获取锁，自旋的方式要比阻塞快。</li>
+<li>无论是跳过取消结点获取的前驱，还是原本的前驱，只要状态不为<code>CANCELLED</code>，都将前驱设置为<code>SIGNAL</code>，都将前驱的状态修改为<code>SIGNAL</code>，返回<code>false</code>。即第二种情况的再次执行。</li>
+</ol>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">boolean</span> <span class="title">shouldParkAfterFailedAcquire</span><span class="params">(Node pred, Node node)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 前驱的状态</span></span><br><span class="line">	<span class="keyword">int</span> ws = pred.waitStatus;</span><br><span class="line">	<span class="comment">// 前驱状态为signal 则返回true</span></span><br><span class="line">        <span class="keyword">if</span> (ws == Node.SIGNAL)</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">	</span><br><span class="line">        <span class="keyword">if</span> (ws &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            <span class="comment">// 前驱处于取消状态 则找到第一个非取消的前驱</span></span><br><span class="line">	    <span class="comment">// 返回false 由于清理了前面取消的结点的 所以可能不用阻塞 就可以获取锁</span></span><br><span class="line">	    <span class="comment">// 所以重试</span></span><br><span class="line">            <span class="keyword">do</span> &#123;</span><br><span class="line">                node.prev = pred = pred.prev;</span><br><span class="line">            &#125; <span class="keyword">while</span> (pred.waitStatus &gt; <span class="number">0</span>);</span><br><span class="line">            pred.next = node;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="comment">// 前驱状态为0(初始状态) 或者 PROPAGATE</span></span><br><span class="line">	    <span class="comment">// 将前驱状态置为signal</span></span><br><span class="line">            compareAndSetWaitStatus(pred, ws, Node.SIGNAL);</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>当node获取锁(<code>tryAcquireXXX()</code>)失败后，该方法被调用，进行状态检查和更新，改变前驱状态：</p>
+<ol>
+<li>前驱状态为<code>signal</code>     则返回true, 后继需要阻塞。</li>
+<li>前驱状态为<code>cancelled</code>  则返回false，后继重试，不需要阻塞。</li>
+<li>前驱状态为<code>0</code>或者<code>PROPAGATE</code>， 则返回<code>false</code>，后继重试，不需要阻塞。</li>
+</ol>
+<h3 id="parkAndCheckInterrupt"><a href="#parkAndCheckInterrupt" class="headerlink" title="parkAndCheckInterrupt()"></a>parkAndCheckInterrupt()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">parkAndCheckInterrupt</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        LockSupport.park(<span class="keyword">this</span>);</span><br><span class="line">        <span class="keyword">return</span> Thread.interrupted();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>parkAndCheckInterrupt()</code>方法阻塞自身，在被唤醒后，重置中断状态，最后返回之前是否发生过中断。<br>返回值为<code>true</code>，表示发生过中断。<br>返回值为<code>false</code>，表示尚未发生过中断。</p>
+<h3 id="selfInterrupt"><a href="#selfInterrupt" class="headerlink" title="selfInterrupt()"></a>selfInterrupt()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">selfInterrupt</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        Thread.currentThread().interrupt();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>当前线程中断自身。一般在<code>acquirequeued()</code>方法中恢复自身中断状态中使用，使用的时间点是在返回前。</p>
+<h3 id="unparkSuccessor-node"><a href="#unparkSuccessor-node" class="headerlink" title="unparkSuccessor(node)"></a>unparkSuccessor(node)</h3><p><code>unparkSuccessor(node)</code>方法用于唤醒<code>node</code>的后继结点，这里的<code>node</code>一般是<code>head</code>：</p>
+<ol>
+<li>如果<code>node</code>的状态为<code>SIGNAL</code>或者<code>PROPAGATE</code>，则将状态重置为<code>0</code>，然后唤醒后继。</li>
+<li>否则前驱状态为<code>0</code>或者<code>CANCELLED</code>，则不用改变状态，直接唤醒后继。</li>
+<li>如果后继是取消结点，则从<code>tail</code>开始遍历，找出第一个非<code>取消</code>的结点，作为后继，然后唤醒。<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">unparkSuccessor</span><span class="params">(Node node)</span> </span>&#123;</span><br><span class="line">       	<span class="comment">// 即使node的状态为负数(signal condition propagate)</span></span><br><span class="line">	<span class="comment">// 当然propagate不可能发生</span></span><br><span class="line">	<span class="comment">// 也需要唤醒后继 并且置状态为0</span></span><br><span class="line">        <span class="keyword">int</span> ws = node.waitStatus;</span><br><span class="line">        <span class="keyword">if</span> (ws &lt; <span class="number">0</span>)</span><br><span class="line">            compareAndSetWaitStatus(node, ws, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">     	<span class="comment">// 唤醒后继</span></span><br><span class="line">	<span class="comment">// 如果后继为cancelled 或者null</span></span><br><span class="line">	<span class="comment">// 则从tail开始遍历 找到第一个非cancelled结点  将其唤醒</span></span><br><span class="line">        Node s = node.next;</span><br><span class="line">        <span class="keyword">if</span> (s == <span class="keyword">null</span> || s.waitStatus &gt; <span class="number">0</span>) &#123;</span><br><span class="line">            s = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">for</span> (Node t = tail; t != <span class="keyword">null</span> &amp;&amp; t != node; t = t.prev)</span><br><span class="line">                <span class="keyword">if</span> (t.waitStatus &lt;= <span class="number">0</span>)</span><br><span class="line">                    s = t;</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">// 唤醒s</span></span><br><span class="line">        <span class="keyword">if</span> (s != <span class="keyword">null</span>)</span><br><span class="line">            LockSupport.unpark(s.thread);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h2 id="忽略中断的获取acquire-arg"><a href="#忽略中断的获取acquire-arg" class="headerlink" title="忽略中断的获取acquire(arg)"></a>忽略中断的获取acquire(arg)</h2><h3 id="acquire-arg"><a href="#acquire-arg" class="headerlink" title="acquire(arg)"></a>acquire(arg)</h3><code>acquire(arg)</code>：方法是阻塞获取独占锁的方法，这个方法忽略中断。如果不能直接获取锁，则将线程插入到<code>sync</code>等待队列中，阻塞，直到被唤醒。<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">acquire</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (!tryAcquire(arg) &amp;&amp;</span><br><span class="line">            acquireQueued(addWaiter(Node.EXCLUSIVE), arg))</span><br><span class="line">            selfInterrupt();<span class="comment">// 如果发生过中断  则interrupt() 自身 表示发生过中断</span></span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure></li>
+<li>调用<code>tryAcquire()</code>，非阻塞获取锁。如果获取成功，则直接返回。</li>
+<li>否则，获取独占锁失败，则调用<code>addWaiter()</code>，将结点插入到<code>sync</code>队列中。</li>
+<li>插入到<code>sync</code>队列后，进入<code>acquireQueued(node)</code>方法。<code>acquireQueued(node)</code>方法是否发生过中断。</li>
+<li>当<code>acquireQueued(node)</code>返回<code>true</code>时，调用<code>selfInterrupt()</code>设置中断状态。</li>
+<li><code>acquireQueued(node)</code>返回<code>false</code>时，直接返回。</li>
+</ol>
+<h3 id="acquireQueued-node"><a href="#acquireQueued-node" class="headerlink" title="acquireQueued(node)"></a>acquireQueued(node)</h3><p><code>acquireQueued(node)</code>方法，是当结点线程已经插入到<code>sync</code>队列时，获取锁的方法。<br>它会反复调用调用<code>tryAcquire(arg)</code>获取独占锁，当获取失败时，线程阻塞。<br>当线程被唤醒后又去尝试调用<code>tryAcquire(arg)</code>获取独占锁，直到获取成功。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">acquireQueued</span><span class="params">(<span class="keyword">final</span> Node node, <span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">boolean</span> failed = <span class="keyword">true</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">boolean</span> interrupted = <span class="keyword">false</span>;</span><br><span class="line">	    <span class="comment">// 自旋</span></span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                <span class="keyword">final</span> Node p = node.predecessor();</span><br><span class="line">		<span class="comment">// 前驱时 head 而且当前线程以及被唤醒 则获取锁</span></span><br><span class="line">                <span class="keyword">if</span> (p == head &amp;&amp; tryAcquire(arg)) &#123;</span><br><span class="line">                    setHead(node);</span><br><span class="line">                    p.next = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">                    failed = <span class="keyword">false</span>;</span><br><span class="line">		    <span class="comment">// 返回是否发生过中断</span></span><br><span class="line">                    <span class="keyword">return</span> interrupted;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 当前结点是否需要阻塞 + 阻塞</span></span><br><span class="line">		<span class="keyword">if</span> (shouldParkAfterFailedAcquire(p, node) &amp;&amp;</span><br><span class="line">                    parkAndCheckInterrupt())</span><br><span class="line">                    interrupted = <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (failed)</span><br><span class="line">                cancelAcquire(node);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>首先<code>acquireQueued(node)</code>方法，放在一个<code>for</code>死循环里面，所以在获取锁之前，一直阻塞。<br>因为<code>acquireQueued(node)</code>方法不会响应中断，只会在返回时，传递<code>中断状态</code>。<br>执行步骤如下：</p>
+<ol>
+<li>获取<code>node</code>的前驱<code>p</code>，如果<code>p</code>是<code>head</code>，则说明当前线程很有可能是被<code>head</code>唤醒的，则尝试获取锁，如果成功则返回中断标志(是否发生过中断)。</li>
+<li>如果前驱<code>p</code>是<code>head</code>，但是<code>tryAcquire()</code>失败，说明有<code>sync队列外面</code>的线程<code>闯入</code>和当前线程竞争独占锁(非公平锁)。则调用<code>shouldParkAfterFailedAcquire()</code>阻塞，或者自旋，等待下一次竞争锁。</li>
+<li>如果前驱<code>p</code>不是<code>head</code>，则调用<code>shouldParkAfterFailedAcquire()</code>方法决定是否阻塞，然后自旋或者阻塞，等待下一次竞争锁。</li>
+</ol>
+<h2 id="release-arg"><a href="#release-arg" class="headerlink" title="release(arg)"></a>release(arg)</h2><p><code>release(arg)</code>：用于释放独占锁。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">release</span><span class="params">(<span class="keyword">int</span> arg)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// tryRealease() 锁的释放逻辑 </span></span><br><span class="line">        <span class="keyword">if</span> (tryRelease(arg)) &#123;</span><br><span class="line">            Node h = head;</span><br><span class="line">            <span class="keyword">if</span> (h != <span class="keyword">null</span> &amp;&amp; h.waitStatus != <span class="number">0</span>)</span><br><span class="line">                unparkSuccessor(h);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>如果<code>tryRelease()</code>失败，则直接返回<code>false</code>。可能调用<code>release()</code>的线程没有持有这个独占锁。</li>
+<li>如果<code>tryRelease()</code>成功，则调用<code>unparkSuccessor(h)</code>唤醒后继。</li>
+</ol>
+<p>当一个线程阻塞在<code>acquireQueued(node)</code>中，且这个结点是<code>head</code>的后继，则在那个获取锁的线程调用<code>release()</code>中，会将阻塞的线程换成，重新竞争锁。</p>
+<h2 id="响应中断的获取acquireInterruptibly-arg"><a href="#响应中断的获取acquireInterruptibly-arg" class="headerlink" title="响应中断的获取acquireInterruptibly(arg)"></a>响应中断的获取acquireInterruptibly(arg)</h2><p><code>acquireInterruptibly(arg)</code>方法是会响应中断的<code>acquire(arg)</code>，独占锁获取方法。<br>响应中断也是它与<code>acquire(arg)</code>方法唯一的区别。</p>
+<h3 id="acquireInterruptibly-arg"><a href="#acquireInterruptibly-arg" class="headerlink" title="acquireInterruptibly(arg)"></a>acquireInterruptibly(arg)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">acquireInterruptibly</span><span class="params">(<span class="keyword">int</span> arg)</span></span></span><br><span class="line"><span class="function">            <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">	<span class="comment">// 如果线程已经被中断 则抛出中断异常</span></span><br><span class="line">        <span class="keyword">if</span> (Thread.interrupted())</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">	<span class="comment">// 获取 + 阻塞</span></span><br><span class="line">        <span class="keyword">if</span> (!tryAcquire(arg))</span><br><span class="line">            doAcquireInterruptibly(arg);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>当前线程已经被中断了，则抛出中断异常。</li>
+<li>如果<code>tryAcquire(arg)</code>获取成功，则返回。</li>
+<li>如果<code>tryAcquire(arg)</code>获取失败，则调用<code>doAcquireInterruptibly(arg)</code>。</li>
+<li><code>doAcquireInterruptibly(arg)</code>，首先当前线程结点插入到<code>sync</code>队列中，然后和<code>acquireQueued(node)</code>一样，在<code>sync</code>队列中获取锁，只是<code>doAcquireInterruptibly(arg)</code>阻塞时发生中断，会抛出中断异常。</li>
+</ol>
+<h3 id="doAcquireInterruptibly-arg"><a href="#doAcquireInterruptibly-arg" class="headerlink" title="doAcquireInterruptibly(arg)"></a>doAcquireInterruptibly(arg)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">doAcquireInterruptibly</span><span class="params">(<span class="keyword">int</span> arg)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> Node node = addWaiter(Node.EXCLUSIVE);</span><br><span class="line">        <span class="keyword">boolean</span> failed = <span class="keyword">true</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                <span class="keyword">final</span> Node p = node.predecessor();</span><br><span class="line">                <span class="keyword">if</span> (p == head &amp;&amp; tryAcquire(arg)) &#123;</span><br><span class="line">		    <span class="comment">// 直接将head设置为当前结点</span></span><br><span class="line">                    setHead(node);</span><br><span class="line">                    p.next = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">                    failed = <span class="keyword">false</span>;</span><br><span class="line">                    <span class="keyword">return</span>;</span><br><span class="line">                &#125;</span><br><span class="line">		<span class="comment">// 是否需要阻塞</span></span><br><span class="line">                <span class="keyword">if</span> (shouldParkAfterFailedAcquire(p, node) &amp;&amp;</span><br><span class="line">                    parkAndCheckInterrupt())</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;	    </span><br><span class="line">	    <span class="comment">// 被中断了 则将结点置为取消状态</span></span><br><span class="line">            <span class="keyword">if</span> (failed)</span><br><span class="line">                cancelAcquire(node);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>其它都与<code>acquireQueued(node)</code>一样，只是发生中断时的区别：<br>当当前线程在<code>doAcquireInterruptibly(arg)</code>中，发生中断，则先调用<code>finally</code>中的方法<code>cancelAcquire(node)</code>取消清除<code>sync</code>队列中的当前结点，然后抛出中断异常。</p>
+<h2 id="timeout版本的tryAcquireNanos-arg-timeout"><a href="#timeout版本的tryAcquireNanos-arg-timeout" class="headerlink" title="timeout版本的tryAcquireNanos(arg, timeout)"></a>timeout版本的tryAcquireNanos(arg, timeout)</h2><p><code>tryAcquireNanos(arg)</code>相比较于<code>acquireInterruptibly(arg)</code>，增加了<code>timeout</code>机制，即最多阻塞等待<code>timeout</code>事件，超过这个时间还不没有获取独占锁，则直接返回。<br><code>tryAcquireNanos(arg)</code>方法：</p>
+<ol>
+<li>响应中断</li>
+<li>超时返回</li>
+</ol>
+<h3 id="tryAcquireNanos-arg-timeout"><a href="#tryAcquireNanos-arg-timeout" class="headerlink" title="tryAcquireNanos(arg, timeout)"></a>tryAcquireNanos(arg, timeout)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryAcquireNanos</span><span class="params">(<span class="keyword">int</span> arg, <span class="keyword">long</span> nanosTimeout)</span></span></span><br><span class="line"><span class="function">            <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">	<span class="comment">// 已经中断 则直接抛出中断异常</span></span><br><span class="line">        <span class="keyword">if</span> (Thread.interrupted())</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">        <span class="keyword">return</span> tryAcquire(arg) ||</span><br><span class="line">            doAcquireNanos(arg, nanosTimeout);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>在还没有获取锁时，就发生了中断，则抛出中断异常，返回。</li>
+<li>如果<code>tryAcquire(arg)</code>获取成功，则直接返回<code>true</code>。</li>
+<li>如果<code>tryAcquire(arg)</code>获取失败，则调用<code>doAcquireNanos(arg, nanosTimeout)</code>。</li>
+<li><code>doAcquireNanos(arg, nanosTimeout)</code>首先将线程结点插入到<code>sync</code>队列中，然后在<code>sync</code>队列中尝试获取独占锁。</li>
+<li>如果在<code>timeout</code>时间内，获取锁成功，则返回<code>true</code>。</li>
+<li>如果超时还没有获取到锁，则返回<code>false</code>。</li>
+<li>如果在<code>timeout</code>时间内，发生中断，则抛出中断异常。</li>
+</ol>
+<h3 id="doAcquireNanos-arg-nanosTimeout"><a href="#doAcquireNanos-arg-nanosTimeout" class="headerlink" title="doAcquireNanos(arg, nanosTimeout)"></a>doAcquireNanos(arg, nanosTimeout)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 独占模式下 获取锁的 限时(timeout)版本</span></span><br><span class="line">    <span class="function"><span class="keyword">private</span> <span class="keyword">boolean</span> <span class="title">doAcquireNanos</span><span class="params">(<span class="keyword">int</span> arg, <span class="keyword">long</span> nanosTimeout)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">long</span> lastTime = System.nanoTime();</span><br><span class="line">        <span class="keyword">final</span> Node node = addWaiter(Node.EXCLUSIVE);</span><br><span class="line">        <span class="keyword">boolean</span> failed = <span class="keyword">true</span>;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">                <span class="keyword">final</span> Node p = node.predecessor();</span><br><span class="line">                <span class="keyword">if</span> (p == head &amp;&amp; tryAcquire(arg)) &#123;</span><br><span class="line">                    setHead(node);</span><br><span class="line">                    p.next = <span class="keyword">null</span>; <span class="comment">// help GC</span></span><br><span class="line">                    failed = <span class="keyword">false</span>;</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">                &#125;</span><br><span class="line">                <span class="keyword">if</span> (nanosTimeout &lt;= <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">                <span class="keyword">if</span> (shouldParkAfterFailedAcquire(p, node) &amp;&amp;</span><br><span class="line">                    nanosTimeout &gt; spinForTimeoutThreshold)</span><br><span class="line">                    LockSupport.parkNanos(<span class="keyword">this</span>, nanosTimeout);</span><br><span class="line">                <span class="keyword">long</span> now = System.nanoTime();</span><br><span class="line">                nanosTimeout -= now - lastTime;</span><br><span class="line">                lastTime = now;</span><br><span class="line">                <span class="keyword">if</span> (Thread.interrupted())</span><br><span class="line">                    <span class="keyword">throw</span> <span class="keyword">new</span> InterruptedException();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">	    <span class="comment">// 中断或者超时 则将结点状态置为取消</span></span><br><span class="line">            <span class="keyword">if</span> (failed)</span><br><span class="line">                cancelAcquire(node);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/22/java-AQS-C-4/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(4)-共享模式">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/21/java-AQS-C-2/" data-toggle="tooltip" data-placement="top"
+                           title="AQS精读(2)-sync队列">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#独占模式获取和释放用到的方法"><span class="toc-text">独占模式获取和释放用到的方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#shouldParkAfterFailedAcquire-pred-node"><span class="toc-text">shouldParkAfterFailedAcquire(pred, node)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#parkAndCheckInterrupt"><span class="toc-text">parkAndCheckInterrupt()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#selfInterrupt"><span class="toc-text">selfInterrupt()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#unparkSuccessor-node"><span class="toc-text">unparkSuccessor(node)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#忽略中断的获取acquire-arg"><span class="toc-text">忽略中断的获取acquire(arg)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#acquire-arg"><span class="toc-text">acquire(arg)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#acquireQueued-node"><span class="toc-text">acquireQueued(node)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#release-arg"><span class="toc-text">release(arg)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#响应中断的获取acquireInterruptibly-arg"><span class="toc-text">响应中断的获取acquireInterruptibly(arg)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#acquireInterruptibly-arg"><span class="toc-text">acquireInterruptibly(arg)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doAcquireInterruptibly-arg"><span class="toc-text">doAcquireInterruptibly(arg)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#timeout版本的tryAcquireNanos-arg-timeout"><span class="toc-text">timeout版本的tryAcquireNanos(arg, timeout)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#tryAcquireNanos-arg-timeout"><span class="toc-text">tryAcquireNanos(arg, timeout)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#doAcquireNanos-arg-nanosTimeout"><span class="toc-text">doAcquireNanos(arg, nanosTimeout)</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

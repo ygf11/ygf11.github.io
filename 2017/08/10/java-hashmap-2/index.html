@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Java-HashMap精读(1)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/10/java-hashmap-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Java-HashMap精读(1)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-10
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Java-HashMap精读(1)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>HashMap</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li>初始化参数</li>
+<li>散列方法</li>
+<li>扩容机制</li>
+<li><code>HashMap</code>常见面试题(<code>即实现的注意点</code>)</li>
+</ol>
+<h2 id="初始化参数"><a href="#初始化参数" class="headerlink" title="初始化参数"></a>初始化参数</h2><p><code>HashMap</code>中有三个重要的参数：初始容量，负载因子和最大容量。<br>其中<code>初始容量和负载因子</code>尤为重要，影响着<code>HashMap</code>的性能。</p>
+<ol>
+<li>默认<code>DEFAULT_INITIAL_CAPACITY = 16</code>。即<code>table</code>数组的长度，如果在构造方法中指定自定义，则会被向上格式化为<code>2</code>的幂次方。</li>
+<li>默认<code>DEFAULT_LOAD_FACTOR = 0.75f</code>。</li>
+<li>最大容量<code>MAXIMUM_CAPACITY = 1 &lt;&lt; 30</code>。</li>
+</ol>
+<h2 id="散列方法"><a href="#散列方法" class="headerlink" title="散列方法"></a>散列方法</h2><p>包含两个方法<code>hash(int)</code>和<code>indexFor(int hash, int length)</code>。<br>先看<code>indexFor()</code>方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">indexFor</span><span class="params">(<span class="keyword">int</span> h, <span class="keyword">int</span> length)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">return</span> h &amp; (length-<span class="number">1</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>1.<code>h</code>：一般是<code>hash()</code>的返回值，即对象<code>hashCode()</code>的返回值经过处理得到的值。<br>2.<code>length</code>：<code>table[]</code>数组的长度。由于长度就是容量，所以是2的幂次方。<code>length - 1</code>就是它的二进制掩码。</p>
+<p>那么<code>h &amp; (length-1)</code>，取的就是<code>h</code>的低几位的值，把这几位作为在<code>table</code>数组的目标位置。<br>想象一下，如果<code>hash()</code>返回值就是对象<code>hashCode()</code>的值，则相当于它的位置由<code>hashCode()</code>的低位确定，高位没有作用，直接取低几位的冲突必然很高。举个例子，比如<code>table[]</code>数组长度为<code>16</code>，则<code>length - 1</code>为<code>15</code>，即二进制<code>1111</code>如下(上面那部分是<code>hashCode()</code>的返回值)：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">       <span class="number">10100101</span> <span class="number">11000100</span> <span class="number">00100101</span></span><br><span class="line">&amp;      <span class="number">00000000</span> <span class="number">00000000</span> <span class="number">00001111</span></span><br><span class="line">---------------------------------</span><br><span class="line">       <span class="number">00000000</span> <span class="number">00000000</span> <span class="number">00000101</span>  <span class="comment">// 全部归零留下低4位</span></span><br></pre></td></tr></table></figure>
+
+<p>为了让高位在确定位置时，起到贡献，使用了<code>干扰函数</code>的方法，下面是Jdk1.8<code>HashMap</code>中的<code>hash()</code>方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">int</span> <span class="title">hash</span><span class="params">(Object key)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">int</span> h;</span><br><span class="line">        <span class="keyword">return</span> (key == <span class="keyword">null</span>) ? <span class="number">0</span> : (h = key.hashCode()) ^ (h &gt;&gt;&gt; <span class="number">16</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>这个<code>hash()</code>方法首先将对象的哈希值右移16位，在与原来的哈希值相<code>^</code>。例子：<br><img src="/img/java-hashmap-2-1.bmp" alt=""></p>
+<p>这里高16位与低16位进行了<code>异或</code>运算，使最后取低几位(<code>h &amp; (leng - 1)</code>)的时候，同时考虑了<code>高16位</code>和<code>低16位</code>的特征，使结果更具有随机性。使对象更加均匀得散列到<code>table</code>中。<br><code>jdk1.7HashMap</code>中的<code>hash()</code>方法进行了四次<code>干扰函数</code>的处理，但是本质上和<code>jdk1.8</code>中的一样。<br><code>jdk1.8</code>中主要是认为进行四次<code>干扰</code>计算，占用<code>cpu</code>运行时间太长了，为了效率，改为一次<code>干扰</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// jdk1.7 四次干扰	</span></span><br><span class="line"><span class="function"><span class="keyword">static</span> <span class="keyword">int</span> <span class="title">hash</span><span class="params">(<span class="keyword">int</span> h)</span> </span>&#123;</span><br><span class="line">        h ^= (h &gt;&gt;&gt; <span class="number">20</span>) ^ (h &gt;&gt;&gt; <span class="number">12</span>);</span><br><span class="line">        <span class="keyword">return</span> h ^ (h &gt;&gt;&gt; <span class="number">7</span>) ^ (h &gt;&gt;&gt; <span class="number">4</span>);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>注意</code>：<code>Entry</code>对象对象中的<code>hash</code>，是对<code>key.hashCode()</code>进行再散列后的值，即<code>hash(key.hashCode())</code>。</p>
+<h2 id="扩容机制"><a href="#扩容机制" class="headerlink" title="扩容机制"></a>扩容机制</h2><p>扩容机制指的是：<br>当进行<code>put()</code>等添加操作时，如果增加后的容量大于等于阀值(<code>threshold</code>)时，则进行扩容，扩容一般把<code>table</code>数组扩展成原来的<code>两倍</code>大小。阀值的值取，<code>threshold = capacity*loadFactor</code>。<br><code>capacity</code>为<code>table</code>数组的长度，<code>loadFactor</code>一般为<code>0.75f</code>。</p>
+<h3 id="扩容入口"><a href="#扩容入口" class="headerlink" title="扩容入口"></a>扩容入口</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">addEntry</span><span class="params">(<span class="keyword">int</span> hash, K key, V value, <span class="keyword">int</span> bucketIndex)</span> </span>&#123;</span><br><span class="line">        Entry&lt;K,V&gt; e = table[bucketIndex];</span><br><span class="line">        table[bucketIndex] = <span class="keyword">new</span> Entry&lt;&gt;(hash, key, value, e);</span><br><span class="line">	<span class="comment">// 如果超过阀值 则扩容</span></span><br><span class="line">	<span class="keyword">if</span> (size++ &gt;= threshold)</span><br><span class="line">	    <span class="comment">// 扩容成原来的两倍</span></span><br><span class="line">            resize(<span class="number">2</span> * table.length);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<h3 id="完成扩容"><a href="#完成扩容" class="headerlink" title="完成扩容"></a>完成扩容</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">resize</span><span class="params">(<span class="keyword">int</span> newCapacity)</span> </span>&#123;</span><br><span class="line">        Entry[] oldTable = table;</span><br><span class="line">        <span class="keyword">int</span> oldCapacity = oldTable.length;</span><br><span class="line">	<span class="comment">// 如果旧容量 = 2 ^ 30 则将阀值设置为2^31-1 然后返回</span></span><br><span class="line">        <span class="keyword">if</span> (oldCapacity == MAXIMUM_CAPACITY) &#123;</span><br><span class="line">            threshold = Integer.MAX_VALUE;</span><br><span class="line">            <span class="keyword">return</span>;</span><br><span class="line">        &#125;</span><br><span class="line">	</span><br><span class="line">        Entry[] newTable = <span class="keyword">new</span> Entry[newCapacity];</span><br><span class="line">	<span class="comment">// 转移</span></span><br><span class="line">	transfer(newTable);</span><br><span class="line">        table = newTable;</span><br><span class="line">	<span class="comment">// 更新阀值</span></span><br><span class="line">        threshold = (<span class="keyword">int</span>)(newCapacity * loadFactor);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>扩容步骤：</p>
+<ol>
+<li>确定<code>newTable</code>的长度，如果旧容量为<code>MAXIMUM_CAPACITY</code>，则不进行扩容，仅仅将阀值置为<code>2 ^ 31 - 1</code>。返回。</li>
+<li>否则，以新的容量创建<code>newTable</code>数组。</li>
+<li>遍历整个旧的<code>table</code>，首先找到每个<code>entry</code>在<code>newTable</code>中的位置，然后插入到目标链表的头部。</li>
+<li>将<code>newTable</code>赋值给<code>table</code>。</li>
+<li>更新<code>threshold</code>。</li>
+</ol>
+<h2 id="HashMap常见面试题-即实现的注意点"><a href="#HashMap常见面试题-即实现的注意点" class="headerlink" title="HashMap常见面试题(即实现的注意点)"></a>HashMap常见面试题(即实现的注意点)</h2><ol>
+<li>散列方法(干扰函数)</li>
+<li>为什么<code>HashMap</code>使用<code>2</code>的幂次方作为容量?(与散列方法配套使用)</li>
+<li>如何扩容？</li>
+<li><code>HashMap</code>和<code>Hashtable</code>的区别？(散列方法，线程安全，初始化参数)</li>
+<li>为什么使用头插法?(效率高)</li>
+<li>并发<code>put</code>导致冲突链表成环，以及<code>元素丢失</code>问题？</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/10/java-hashmap-3/" data-toggle="tooltip" data-placement="top"
+                           title="Java-HashMap精读(2)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/04/Netty-close/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-连接关闭过程">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#初始化参数"><span class="toc-text">初始化参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#散列方法"><span class="toc-text">散列方法</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#扩容机制"><span class="toc-text">扩容机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#扩容入口"><span class="toc-text">扩容入口</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#完成扩容"><span class="toc-text">完成扩容</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#HashMap常见面试题-即实现的注意点"><span class="toc-text">HashMap常见面试题(即实现的注意点)</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        ArrayBlockingQueue精读(1)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/18/java-ArrayBlockingQueue-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>ArrayBlockingQueue精读(1)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-18
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            ArrayBlockingQueue精读(1)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>ArrayBlockingQueue</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>ArrayBlockingQueue</code>特点</li>
+<li>成员变量和构造方法</li>
+<li><code>insert()</code>、<code>extract()</code></li>
+<li><code>offer()</code>和<code>put()</code></li>
+<li><code>poll()</code>和<code>take()</code></li>
+</ol>
+<h2 id="ArrayBlockingQueue特点"><a href="#ArrayBlockingQueue特点" class="headerlink" title="ArrayBlockingQueue特点"></a>ArrayBlockingQueue特点</h2><ol>
+<li><code>有界</code>阻塞队列</li>
+<li>队列的<code>容量</code>在队列<code>创建</code>的时候确定，以后不能<code>更改</code>。</li>
+<li>可以在队列构造的时候指定<code>公平性</code>，即<code>重入锁</code>的公平性。</li>
+<li>遍历操作是<code>弱一致性</code>的，即在遍历阶段，队列中的数据可能会被修改。</li>
+<li>由于是数组实现的队列，则<code>remove(o)</code>方法需要移动队列中的数据才能完成。</li>
+<li>队列中不允许插入<code>null</code>的数据，每当调用<code>offer()</code>或者<code>put()</code>，且插入的<code>item</code>为<code>null</code>时，抛出<code>空指针异常</code>。</li>
+</ol>
+<h2 id="成员变量和构造方法"><a href="#成员变量和构造方法" class="headerlink" title="成员变量和构造方法"></a>成员变量和构造方法</h2><h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 数组</span></span><br><span class="line"><span class="keyword">final</span> Object[] items;</span><br><span class="line"><span class="keyword">int</span> takeIndex;</span><br><span class="line"><span class="keyword">int</span> putIndex;</span><br><span class="line"><span class="keyword">int</span> count; </span><br><span class="line"><span class="keyword">final</span> ReentrantLock lock;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition notEmpty;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition notFull;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>items</code>：<code>item</code>数组，作为队列。</li>
+<li><code>takeIndex</code>：队列头部指针。</li>
+<li><code>putIndex</code>：队列尾部指针的下一个，用于插入。</li>
+<li><code>count</code>：队列中包含的对象的个数。</li>
+<li><code>lock</code>：互斥重入锁。</li>
+<li><code>notEmpty</code>：消费者线程的等待队列，如果队列是空的，则将消费者线程插入到这个等待队列中。</li>
+<li><code>notFull</code>：生产者线程的等待队列，如果队列是满的，则将生产者线程插入到这个等待队列中。</li>
+</ol>
+<p>由上面可以看出两点：</p>
+<ol>
+<li><code>插入</code>操作和<code>获取</code>操作，是典型的生产者消费者模式。</li>
+<li>所有的成员变量都是不是<code>volatile</code>变量，因为获取和更新之前都需要获取锁。</li>
+</ol>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><p><code>不指定公平性</code>的构造方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ArrayBlockingQueue</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">this</span>(capacity, <span class="keyword">false</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>可以看出不指定公平性时，采用<code>不公平</code>的重入锁模式。</p>
+<p><code>指定公平性</code>的构造方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">ArrayBlockingQueue</span><span class="params">(<span class="keyword">int</span> capacity, <span class="keyword">boolean</span> fair)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (capacity &lt;= <span class="number">0</span>)</span><br><span class="line">            <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line">        <span class="keyword">this</span>.items = <span class="keyword">new</span> Object[capacity];</span><br><span class="line">        lock = <span class="keyword">new</span> ReentrantLock(fair);</span><br><span class="line">        notEmpty = lock.newCondition();</span><br><span class="line">        notFull =  lock.newCondition();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>指定公平性和容量。</p>
+<p>由上面可以看出，<code>ArrayBlockingQueue</code>在构造时必须指定<code>队列的容量</code>，所以是<code>有界</code>队列。</p>
+<h2 id="insert-和extract"><a href="#insert-和extract" class="headerlink" title="insert()和extract()"></a>insert()和extract()</h2><h3 id="insert-o"><a href="#insert-o" class="headerlink" title="insert(o)"></a>insert(o)</h3><p><code>insert(o)</code>在<code>offer()</code>和<code>put()</code>中被调用：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">insert</span><span class="params">(E x)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 插入</span></span><br><span class="line">	items[putIndex] = x;</span><br><span class="line">	<span class="comment">// 更新putIndex</span></span><br><span class="line">        putIndex = inc(putIndex);</span><br><span class="line">	<span class="comment">// 自增count</span></span><br><span class="line">        ++count;</span><br><span class="line">	<span class="comment">// 唤醒一个消费者</span></span><br><span class="line">        notEmpty.signal();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>插入<code>x</code>。</li>
+<li>自增更新<code>putIndex</code>。</li>
+<li>自增更新<code>count</code>。</li>
+<li>唤醒在<code>notempty</code>等待队列中的一个消费者线程。</li>
+</ol>
+<h3 id="extract"><a href="#extract" class="headerlink" title="extract()"></a>extract()</h3><p><code>extract()</code>从队列头部获取一个<code>item</code>，在<code>poll()</code>和<code>put()</code>中被调用：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> E <span class="title">extract</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> Object[] items = <span class="keyword">this</span>.items;</span><br><span class="line">	<span class="comment">// 获取队列头部item</span></span><br><span class="line">	E x = <span class="keyword">this</span>.&lt;E&gt;cast(items[takeIndex]);</span><br><span class="line">	<span class="comment">// 移除</span></span><br><span class="line">        items[takeIndex] = <span class="keyword">null</span>;</span><br><span class="line">	<span class="comment">// 更新takeIndex</span></span><br><span class="line">        takeIndex = inc(takeIndex);</span><br><span class="line">	<span class="comment">// 更新count</span></span><br><span class="line">        --count;</span><br><span class="line">	<span class="comment">// 唤醒等待的生产者线程</span></span><br><span class="line">        notFull.signal();</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<ol>
+<li>获取队列头部的<code>item</code>。</li>
+<li>将队列头部的<code>item</code>引用置为<code>null</code>。</li>
+<li>自减更新<code>takeIndex</code>。</li>
+<li>自减更新<code>count</code>。</li>
+<li>唤醒在<code>notFull</code>等待队列中的一个生产者线程。</li>
+</ol>
+<p>最后调用<code>insert()</code>和<code>extract()</code>方法时，必须持有互斥锁。</p>
+<h2 id="offer-和put"><a href="#offer-和put" class="headerlink" title="offer()和put()"></a>offer()和put()</h2><h3 id="offer-e"><a href="#offer-e" class="headerlink" title="offer(e)"></a>offer(e)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 检查e是否为null 不接受null元素。</span></span><br><span class="line">	checkNotNull(e);</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 没有空间直接返回</span></span><br><span class="line">            <span class="keyword">if</span> (count == items.length)</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">            <span class="keyword">else</span> &#123;</span><br><span class="line">                insert(e);</span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>offer()</code>是非阻塞版本。插入成功返回<code>true</code>，插入失败(<code>队列已满</code>)，则返回<code>false</code>。<br>这个方法需要关注两点：</p>
+<ol>
+<li><code>insert()</code>方法中，会调用<code>notempty.signal()</code>唤醒一个等待的消费者线程。</li>
+<li><code>offer(e)</code>中使用的<code>lock.lock()</code>方法是忽略中断的，即当<code>加锁</code>的代码块中发生中断，会被忽略。</li>
+</ol>
+<h3 id="offer-e-timeout-unit"><a href="#offer-e-timeout-unit" class="headerlink" title="offer(e,timeout, unit)"></a>offer(e,timeout, unit)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e, <span class="keyword">long</span> timeout, TimeUnit unit)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">	<span class="comment">// 检查e是否为null 不接受null元素。</span></span><br><span class="line">        checkNotNull(e);</span><br><span class="line">        <span class="keyword">long</span> nanos = unit.toNanos(timeout);</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 加入到notFull等待队列中</span></span><br><span class="line">            <span class="keyword">while</span> (count == items.length) &#123;</span><br><span class="line">                <span class="keyword">if</span> (nanos &lt;= <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">                nanos = notFull.awaitNanos(nanos);</span><br><span class="line">            &#125;</span><br><span class="line">            insert(e);</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>offer(e)</code>的限时等待版本。<br>不像<code>offer(e)</code>方法，无阻塞，直接返回。<br>而是，当队列满的时候，最多等待<code>timeout</code>时间。<br>如果在<code>timeout</code>时间内有<code>空间</code>可以插入，则返回<code>true</code>。<br>否则返回<code>false</code>。</p>
+<p>需要注意：<code>offer()</code>方法会抛出中断异常，因为使用的<code>lock</code>方法是<code>lock.lockInterruptibly()</code>。<br>是一种响应中断的方法。</p>
+<h3 id="put"><a href="#put" class="headerlink" title="put()"></a>put()</h3><p><code>put()</code>方法是一种一直阻塞的方法，直到队列有空间可以插入。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">(E e)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">	<span class="comment">// 检查e是否为null 不接受null元素。</span></span><br><span class="line">        checkNotNull(e);</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">	<span class="comment">// 响应中断的lock</span></span><br><span class="line">	lock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 没有空间 则阻塞等待 知道被其它消费者唤醒</span></span><br><span class="line">            <span class="keyword">while</span> (count == items.length)</span><br><span class="line">                notFull.await();</span><br><span class="line">	    <span class="comment">// 插入</span></span><br><span class="line">            insert(e);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>与<code>offer()</code>的限时等待版本一样，使用了<code>lock.lockInterruptibly()</code>方法，可以响应中断。</p>
+<h2 id="poll-和take"><a href="#poll-和take" class="headerlink" title="poll()和take()"></a>poll()和take()</h2><h3 id="poll"><a href="#poll" class="headerlink" title="poll()"></a>poll()</h3><p><code>poll()</code>是对应于<code>offer(e)</code>，不会阻塞，成功返回数据，失败(<code>队列为空</code>)，返回<code>null</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// extract() 会唤醒生产者</span></span><br><span class="line">            <span class="keyword">return</span> (count == <span class="number">0</span>) ? <span class="keyword">null</span> : extract();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>注意两点：</p>
+<ol>
+<li><code>extract()</code>方法中会唤醒<code>notFull</code>等待队列中的生产者线程。</li>
+<li>加锁的方法使用的是<code>lock.lock()</code>，即忽略中断。</li>
+</ol>
+<h3 id="poll-timeout-unit"><a href="#poll-timeout-unit" class="headerlink" title="poll(timeout, unit)"></a>poll(timeout, unit)</h3><p><code>poll(timeout,unit)</code>是<code>poll()</code>的限时等待版本。<br>在<code>timeout</code>等待时间内获取成功，返回数据，否则返回<code>null</code>。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">(<span class="keyword">long</span> timeout, TimeUnit unit)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">long</span> nanos = unit.toNanos(timeout);</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">        lock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="keyword">while</span> (count == <span class="number">0</span>) &#123;</span><br><span class="line">                <span class="keyword">if</span> (nanos &lt;= <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">                nanos = notEmpty.awaitNanos(nanos);</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="keyword">return</span> extract();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>注意：使用的加锁方法是<code>lock.lockInterruptibly();</code>，则在加锁代码块中发生异常，直接抛出中断异常。</p>
+<h3 id="take"><a href="#take" class="headerlink" title="take()"></a>take()</h3><p><code>take()</code>阻塞版本。与<code>poll(timeout,unit)</code>一样会响应中断。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">take</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock lock = <span class="keyword">this</span>.lock;</span><br><span class="line">	<span class="comment">// 响应中断的加锁方法</span></span><br><span class="line">	lock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 队列为空一直阻塞</span></span><br><span class="line">            <span class="keyword">while</span> (count == <span class="number">0</span>)</span><br><span class="line">                notEmpty.await();</span><br><span class="line">	    <span class="comment">// extract() 会唤醒生产者</span></span><br><span class="line">            <span class="keyword">return</span> extract();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            lock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/18/java-ArrayBlockingQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="ArrayBlockingQueue精读(2)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/17/java-SynchronousQueue-3/" data-toggle="tooltip" data-placement="top"
+                           title="SynchronousQueue精读(3)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ArrayBlockingQueue特点"><span class="toc-text">ArrayBlockingQueue特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#成员变量和构造方法"><span class="toc-text">成员变量和构造方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#insert-和extract"><span class="toc-text">insert()和extract()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#insert-o"><span class="toc-text">insert(o)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#extract"><span class="toc-text">extract()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#offer-和put"><span class="toc-text">offer()和put()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#offer-e"><span class="toc-text">offer(e)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#offer-e-timeout-unit"><span class="toc-text">offer(e,timeout, unit)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#put"><span class="toc-text">put()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#poll-和take"><span class="toc-text">poll()和take()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#poll"><span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#poll-timeout-unit"><span class="toc-text">poll(timeout, unit)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#take"><span class="toc-text">take()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

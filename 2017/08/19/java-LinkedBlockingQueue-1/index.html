@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        LinkedBlockingQueue精读(1)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/08/19/java-LinkedBlockingQueue-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>LinkedBlockingQueue精读(1)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-08-19
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            LinkedBlockingQueue精读(1)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>首先<code>LinkedBlockingQueue</code>源码基于jdk-1.7</p>
+<h2 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h2><ol>
+<li><code>LinkedBlockingQueue</code>实现特点</li>
+<li>生产者线程和消费者线程互相唤醒</li>
+<li>成员变量和构造方法</li>
+<li><code>enqueue()</code>和<code>dequeeu()</code></li>
+<li><code>offer()</code>和<code>put()</code></li>
+<li><code>poll()</code>和<code>take()</code></li>
+<li><code>remove()</code></li>
+<li>遍历</li>
+<li>线程安全性和可见性</li>
+</ol>
+<h2 id="LinkedBlockingQueue实现特点"><a href="#LinkedBlockingQueue实现特点" class="headerlink" title="LinkedBlockingQueue实现特点"></a>LinkedBlockingQueue实现特点</h2><ol>
+<li><code>LinkedBlockingQueue</code>是<code>有界</code>和<code>无界</code>可选定的阻塞队列。</li>
+<li>对于<code>插入</code>和<code>获取</code>操作，使用了两把锁。即<code>读写分离</code>策略。</li>
+<li><code>count</code>，队列的计数使用了<code>AtomicInteger</code>类原子更新。</li>
+<li>多线程可见性的保证。由于采用了读写分离，所以可见性由<code>cas</code>更新<code>count</code>值，和<code>volatile</code>读取<code>count</code>中的内部成员保障。</li>
+<li>遍历是弱一致性的遍历。</li>
+</ol>
+<h2 id="生产者线程和消费者线程互相唤醒"><a href="#生产者线程和消费者线程互相唤醒" class="headerlink" title="生产者线程和消费者线程互相唤醒"></a>生产者线程和消费者线程互相唤醒</h2><p><img src="/img/java-LinkedBlockingQueue-1.bmp" alt=""></p>
+<ol>
+<li>如果<code>生产者线程</code>在<code>插入</code>完成之后，发现插入之前<code>队列</code>为空，则在插入之前可能有<code>消费者线程</code>因为<code>队列空</code>而<code>阻塞</code>，所以此时生产者线程<code>唤醒</code>一个阻塞的<code>消费者线程</code>。</li>
+<li>如果<code>生产者线程</code>在<code>插入</code>完成之后，发现插入之后的<code>队列未满</code>，则<code>唤醒</code>阻塞的<code>生产者线程</code>继续插入。</li>
+<li>如果<code>消费者线程</code>在<code>获取</code>之后，发现<code>获取</code>之前<code>队列已满</code>，则在<code>获取</code>之前可能有<code>生产者</code>线程因为<code>队列满</code>而<code>阻塞</code>，所以此时消费者线程<code>唤醒</code>一个阻塞的<code>生产者线程</code>。</li>
+<li>如果<code>消费者线程</code>在<code>获取</code>之后，发现<code>获取</code>之后的<code>队列未空</code>，则<code>唤醒</code>阻塞的<code>消费者线程</code>。</li>
+</ol>
+<h2 id="成员变量和构造方法"><a href="#成员变量和构造方法" class="headerlink" title="成员变量和构造方法"></a>成员变量和构造方法</h2><h3 id="成员变量"><a href="#成员变量" class="headerlink" title="成员变量"></a>成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 可以指定容量 容量不指定则为Integer.MAX_VALUE(无界)</span></span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> <span class="keyword">int</span> capacity;    </span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> AtomicInteger count = <span class="keyword">new</span> AtomicInteger(<span class="number">0</span>);</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> Node&lt;E&gt; head;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">transient</span> Node&lt;E&gt; last;</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> ReentrantLock takeLock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition notEmpty = takeLock.newCondition();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> ReentrantLock putLock = <span class="keyword">new</span> ReentrantLock();</span><br><span class="line"><span class="keyword">private</span> <span class="keyword">final</span> Condition notFull = putLock.newCondition();</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>capacity</code>：队列容量。两种指定方式：1. 在构造方法中指定(<code>有界</code>)。2. 没有在构造方法中指定，则为<code>Integer.MAX_VALUE</code>(<code>无界</code>)。</li>
+<li><code>count</code>：记录队列中<code>item</code>的个数，由于使用了两把锁，所以<code>count</code>类型为<code>AtomicInteger</code>。</li>
+<li><code>head</code>：队列头部，指向哑结点，即<code>head.next</code>才开始存储数据。</li>
+<li><code>last</code>：队列尾部。</li>
+<li><code>takeLock</code>：从队列获取数据需要加的锁。</li>
+<li><code>notEmpty</code>：由于<code>队列空</code>，而<code>消费者线程</code>不能获取数据，则将这些<code>消费者线程</code>放入<code>notEmpty</code>的等待队列中。</li>
+<li><code>putLock</code>：向队列中插入数据需要加的锁。</li>
+<li><code>notFull</code>：由于<code>队列满</code>，而<code>生产者线程</code>不能插入数据，则将这些<code>生产者线程</code>放入<code>notFull</code>的等待队列中。</li>
+</ol>
+<p>从中可以看出这里面没有<code>成员变量</code>是<code>volatile</code>的。<br>其实可见性是由<code>AtomicInteger</code>类<code>count</code>变量的<code>volatile</code>读(<code>count.get()</code>)，以及<code>count</code>的<code>volatile</code>写(<code>cas</code>更新)保证的。</p>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><p>指定<code>容量</code>的构造方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">LinkedBlockingQueue</span><span class="params">(<span class="keyword">int</span> capacity)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">if</span> (capacity &lt;= <span class="number">0</span>) <span class="keyword">throw</span> <span class="keyword">new</span> IllegalArgumentException();</span><br><span class="line">    <span class="keyword">this</span>.capacity = capacity;</span><br><span class="line">    last = head = <span class="keyword">new</span> Node&lt;E&gt;(<span class="keyword">null</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>即构造<code>有界</code>的阻塞队列。</p>
+<p>不指定<code>容量</code>的构造方法：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="title">LinkedBlockingQueue</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">this</span>(Integer.MAX_VALUE);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>无参数的构造方法，则默认容量为<code>Integer.MAX_VALUE</code>，即构造的是<code>无界</code>阻塞队列。</p>
+<h2 id="enqueue-和dequeeu"><a href="#enqueue-和dequeeu" class="headerlink" title="enqueue()和dequeeu()"></a>enqueue()和dequeeu()</h2><h3 id="enqueue"><a href="#enqueue" class="headerlink" title="enqueue()"></a>enqueue()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">enqueue</span><span class="params">(Node&lt;E&gt; node)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// assert putLock.isHeldByCurrentThread();</span></span><br><span class="line">    <span class="comment">// assert last.next == null;</span></span><br><span class="line">    last = last.next = node;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>插入到<code>last</code>之后。(必须持有<code>putLock</code>)</p>
+<h3 id="dequeeu"><a href="#dequeeu" class="headerlink" title="dequeeu()"></a>dequeeu()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">private</span> E <span class="title">dequeue</span><span class="params">()</span> </span>&#123;</span><br><span class="line">     <span class="comment">// assert takeLock.isHeldByCurrentThread();</span></span><br><span class="line">     <span class="comment">// assert head.item == null;</span></span><br><span class="line">     Node&lt;E&gt; h = head;</span><br><span class="line">     Node&lt;E&gt; first = h.next;</span><br><span class="line">     h.next = h; <span class="comment">// help GC</span></span><br><span class="line">     head = first;</span><br><span class="line">     E x = first.item;</span><br><span class="line">     first.item = <span class="keyword">null</span>;</span><br><span class="line">     <span class="keyword">return</span> x;</span><br><span class="line"> &#125;</span><br></pre></td></tr></table></figure>
+<p>获取<code>head.next</code>的数据项。(必须持有<code>takeLock</code>)</p>
+<h2 id="offer-和put"><a href="#offer-和put" class="headerlink" title="offer()和put()"></a>offer()和put()</h2><h3 id="offer-e"><a href="#offer-e" class="headerlink" title="offer(e)"></a>offer(e)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">   <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e)</span> </span>&#123;</span><br><span class="line">       <span class="keyword">if</span> (e == <span class="keyword">null</span>) <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line"><span class="keyword">final</span> AtomicInteger count = <span class="keyword">this</span>.count;</span><br><span class="line"><span class="comment">// volatile读 队列满直接返回</span></span><br><span class="line">       <span class="keyword">if</span> (count.get() == capacity)</span><br><span class="line">           <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">       <span class="keyword">int</span> c = -<span class="number">1</span>;</span><br><span class="line">       Node&lt;E&gt; node = <span class="keyword">new</span> Node(e);</span><br><span class="line">       <span class="keyword">final</span> ReentrantLock putLock = <span class="keyword">this</span>.putLock;</span><br><span class="line"><span class="comment">// 忽略中断的加锁方法</span></span><br><span class="line">       putLock.lock();</span><br><span class="line">       <span class="keyword">try</span> &#123;</span><br><span class="line">    <span class="comment">// volatile读</span></span><br><span class="line">           <span class="keyword">if</span> (count.get() &lt; capacity) &#123;</span><br><span class="line">               enqueue(node);<span class="comment">//更新队列</span></span><br><span class="line">	<span class="comment">// volatile 写</span></span><br><span class="line">               c = count.getAndIncrement();</span><br><span class="line">	<span class="comment">// 队列在存放之后 未满 则唤醒阻塞的生产者线程</span></span><br><span class="line">               <span class="keyword">if</span> (c + <span class="number">1</span> &lt; capacity)</span><br><span class="line">                   notFull.signal();</span><br><span class="line">           &#125;</span><br><span class="line">       &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">           putLock.unlock();</span><br><span class="line">       &#125;</span><br><span class="line"><span class="comment">// 队列在存放之前 是空的 则有可能有消费者线程阻塞 则在存放之后 唤醒</span></span><br><span class="line">       <span class="keyword">if</span> (c == <span class="number">0</span>)</span><br><span class="line">           signalNotEmpty();</span><br><span class="line">       <span class="keyword">return</span> c &gt;= <span class="number">0</span>;</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p><code>offer(e)</code>是非阻塞版本的插入数据。而且忽略中断，因为使用的是忽略中断的加锁方法<code>putLock.lock();</code>。<br>如果队列未满，则直接插入，返回<code>true</code>。<br>如果队列已满，则无法插入，返回<code>false</code>。<br>这里需要注意五点：</p>
+<ol>
+<li>在<code>offer()</code>插入完之后，检查队列是否未满，如果是则<code>唤醒</code>阻塞的<code>生产者线程</code>，继续插入。</li>
+<li>在<code>offer()</code>插入完之后，检查插入之前队列是否为<code>空</code>，如果为<code>空</code>，则可能有<code>消费者线程</code>因为队列空而阻塞，所以<code>唤醒</code>等待的<code>消费者线程</code>。</li>
+<li>由于读写分离，<code>put</code>和<code>take</code>操作可以并发进行，所以共享变量<code>count</code>会在<code>offer()</code>的时候发生修改，这里不会出现问题的原因在于，<code>count</code>即使被<code>take</code>线程修改，也只是变小，不会影响<code>put()</code>线程的剩余操作。</li>
+<li>由于读写分离，<code>put</code>和<code>take</code>操作可以并发进行，所以共享变量<code>head</code>和<code>last</code>在<code>offer()</code>的时候被<code>take</code>线程修改，这里不会出现问题，主要是当<code>head == last</code>的时候，take`线程会阻塞，所以不会出现问题。</li>
+<li>可见性问题。对于<code>put</code>和<code>put</code>(<code>take</code>和<code>take</code>)操作由于由同一把锁同步，所以根据<code>happen-before</code>关系，前面的修改对后面的修改肯定可见。对于<code>put</code>和<code>take</code>操作，分别操作<code>head</code>和<code>tail</code>，所以不会冲突，且这两个操作之前都会获取锁，获取锁具有将主内存同步到线程本地内存的语义，所以不会出现问题。</li>
+</ol>
+<h3 id="offer-e-timeout-unit"><a href="#offer-e-timeout-unit" class="headerlink" title="offer(e, timeout, unit)"></a>offer(e, timeout, unit)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 限时等待版本</span></span><br><span class="line">    <span class="comment">// 响应中断</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">offer</span><span class="params">(E e, <span class="keyword">long</span> timeout, TimeUnit unit)</span></span></span><br><span class="line"><span class="function">        <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line"></span><br><span class="line">        <span class="keyword">if</span> (e == <span class="keyword">null</span>) <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">        <span class="keyword">long</span> nanos = unit.toNanos(timeout);</span><br><span class="line">        <span class="keyword">int</span> c = -<span class="number">1</span>;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock putLock = <span class="keyword">this</span>.putLock;</span><br><span class="line">        <span class="keyword">final</span> AtomicInteger count = <span class="keyword">this</span>.count;</span><br><span class="line">	<span class="comment">// 响应中断的加锁方法</span></span><br><span class="line">	putLock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	    <span class="comment">// 阻塞</span></span><br><span class="line">            <span class="keyword">while</span> (count.get() == capacity) &#123;</span><br><span class="line">                <span class="keyword">if</span> (nanos &lt;= <span class="number">0</span>)</span><br><span class="line">                    <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">                nanos = notFull.awaitNanos(nanos);</span><br><span class="line">            &#125;</span><br><span class="line">            enqueue(<span class="keyword">new</span> Node&lt;E&gt;(e));</span><br><span class="line">            c = count.getAndIncrement();</span><br><span class="line">	    <span class="comment">// 如果队列为空 则唤醒阻塞的生产者线程</span></span><br><span class="line">            <span class="keyword">if</span> (c + <span class="number">1</span> &lt; capacity)</span><br><span class="line">                notFull.signal();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            putLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">// 如果存放之前队列为空 则可能有因为队列空而阻塞的消费者线程</span></span><br><span class="line">	<span class="comment">// 所以唤醒</span></span><br><span class="line">        <span class="keyword">if</span> (c == <span class="number">0</span>)</span><br><span class="line">            signalNotEmpty();</span><br><span class="line">        <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>offer(e)</code>的限时等待版本。最多等待<code>timeout</code>时间。<br>如果在<code>timeout</code>时间内，队列还是满的，则返回<code>false</code>。<br>如果在<code>timeout</code>时间内，插入成功，则返回<code>true</code>。<br>可以响应中断，因为使用的是响应中断的加锁方法(<code>putLock.lockInterruptibly();</code>)。<br>其它和<code>offer(e)</code>，非阻塞版本相同。</p>
+<h3 id="put"><a href="#put" class="headerlink" title="put()"></a>put()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">put</span><span class="params">(E e)</span> <span class="keyword">throws</span> InterruptedException </span>&#123;</span><br><span class="line">        <span class="keyword">if</span> (e == <span class="keyword">null</span>) <span class="keyword">throw</span> <span class="keyword">new</span> NullPointerException();</span><br><span class="line">        <span class="comment">// Note: convention in all put/take/etc is to preset local var</span></span><br><span class="line">        <span class="comment">// holding count negative to indicate failure unless set.</span></span><br><span class="line">        <span class="keyword">int</span> c = -<span class="number">1</span>;</span><br><span class="line">        Node&lt;E&gt; node = <span class="keyword">new</span> Node(e);</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock putLock = <span class="keyword">this</span>.putLock;</span><br><span class="line">        <span class="keyword">final</span> AtomicInteger count = <span class="keyword">this</span>.count;</span><br><span class="line">        putLock.lockInterruptibly();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            <span class="comment">/*</span></span><br><span class="line"><span class="comment">             * Note that count is used in wait guard even though it is</span></span><br><span class="line"><span class="comment">             * not protected by lock. This works because count can</span></span><br><span class="line"><span class="comment">             * only decrease at this point (all other puts are shut</span></span><br><span class="line"><span class="comment">             * out by lock), and we (or some other waiting put) are</span></span><br><span class="line"><span class="comment">             * signalled if it ever changes from capacity. Similarly</span></span><br><span class="line"><span class="comment">             * for all other uses of count in other wait guards.</span></span><br><span class="line"><span class="comment">             */</span>	    </span><br><span class="line">            <span class="keyword">while</span> (count.get() == capacity) &#123;</span><br><span class="line">                notFull.await();</span><br><span class="line">            &#125;</span><br><span class="line">            enqueue(node);</span><br><span class="line">	    <span class="comment">// count 不被锁保护的原因：take线程操作 自会是count减小</span></span><br><span class="line">	    <span class="comment">// cas 将所有数据可见</span></span><br><span class="line">            c = count.getAndIncrement();</span><br><span class="line">	    <span class="comment">//通知生产者来存放</span></span><br><span class="line">	    <span class="keyword">if</span> (c + <span class="number">1</span> &lt; capacity)</span><br><span class="line">                notFull.signal();</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            putLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">	<span class="comment">//在生产之前发现缓冲区是空的 则通知消费者来取 c 为Increment之前的值</span></span><br><span class="line">	<span class="comment">// 如果存放之前 队列是空的 则唤醒一个阻塞的消费者线程</span></span><br><span class="line">        <span class="keyword">if</span> (c == <span class="number">0</span>)</span><br><span class="line">            signalNotEmpty();</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p>一直阻塞的版本，直到插入成功。没有返回值。<br>响应中断，由于使用的加锁方法是<code>putLock.lockInterruptibly();</code>。<br>其它与<code>offer(e)</code>相同。</p>
+<h2 id="poll-和take"><a href="#poll-和take" class="headerlink" title="poll()和take()"></a>poll()和take()</h2><h3 id="poll"><a href="#poll" class="headerlink" title="poll()"></a>poll()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> E <span class="title">poll</span><span class="params">()</span> </span>&#123;</span><br><span class="line">        <span class="keyword">final</span> AtomicInteger count = <span class="keyword">this</span>.count;</span><br><span class="line">        <span class="keyword">if</span> (count.get() == <span class="number">0</span>)</span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">        E x = <span class="keyword">null</span>;</span><br><span class="line">        <span class="keyword">int</span> c = -<span class="number">1</span>;</span><br><span class="line">        <span class="keyword">final</span> ReentrantLock takeLock = <span class="keyword">this</span>.takeLock;</span><br><span class="line">        takeLock.lock();</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">	<span class="comment">// volatile 读</span></span><br><span class="line">            <span class="keyword">if</span> (count.get() &gt; <span class="number">0</span>) &#123;</span><br><span class="line">	        <span class="comment">// 更新队列</span></span><br><span class="line">	        x = dequeue();</span><br><span class="line">		<span class="comment">// volatile写</span></span><br><span class="line">                c = count.getAndDecrement();</span><br><span class="line">                <span class="keyword">if</span> (c &gt; <span class="number">1</span>)</span><br><span class="line">                    notEmpty.signal();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            takeLock.unlock();</span><br><span class="line">        &#125;</span><br><span class="line">        <span class="keyword">if</span> (c == capacity)</span><br><span class="line">            signalNotFull();</span><br><span class="line">        <span class="keyword">return</span> x;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+<p><code>poll()</code>是<code>非阻塞</code>获取队列数据的版本。<br>而且忽略中断，因为使用的是忽略中断的加锁方法(<code>takeLock.lock();</code>)。<br>如果获取队列数据成功，则返回数据。<br>否则，队列为<code>空</code>，则返回<code>null</code>。<br>与<code>offer(e)</code>相同，需要注意五点：</p>
+<ol>
+<li>在<code>poll()</code>获取完成之后，如果在<code>获取成功</code>之前，队列是<code>满的</code>，则可能有<code>生产者线程</code>阻塞，所以尝试<code>唤醒</code>阻塞的<code>生产者线程</code>。</li>
+<li>在<code>poll()</code>获取完成之后，如果队列非空(<code>即还有数据</code>)，则尝试唤醒阻塞的消费者线程，继续获取。</li>
+<li>由于读写分离，<code>put</code>和<code>take</code>操作可以并发进行，所以共享变量<code>count</code>会在<code>poll()</code>的时候发生修改，这里不会出现问题的原因在于，<code>count</code>即使被<code>put</code>线程修改，也只是变大，不会影响<code>put()</code>线程的剩余操作。</li>
+<li>由于读写分离，<code>put</code>和<code>take</code>操作可以并发进行，所以共享变量<code>head</code>和<code>last</code>在<code>offer()</code>的时候被<code>take</code>线程修改，这里不会出现问题，主要是当<code>head == last</code>的时候，take`线程会阻塞，所以不会出现问题。</li>
+<li>可见性问题。对于<code>put</code>和<code>put</code>操作由于由同一把锁同步，所以根据<code>happen-before</code>关系，前面的修改对后面的修改肯定可见。但是对于<code>put</code>和<code>take</code>操作，这里依赖于<code>volatile</code>读(<code>count.get()</code>)，和<code>volatile写</code>(<code>cas</code>更新<code>count</code>值)完成<code>happen-before</code>关系。</li>
+</ol>
+<h3 id="poll-timeout-unit"><a href="#poll-timeout-unit" class="headerlink" title="poll(timeout, unit)"></a>poll(timeout, unit)</h3><p><code>poll()</code>的限时等待版本。最多等待<code>timeout</code>时间。<br>如果在<code>timeout</code>时间内，队列还是空的，则返回<code>false</code>。<br>如果在<code>timeout</code>时间内，获取成功，则返回数据。<br>可以响应中断，因为使用的是响应中断的加锁方法(<code>takeLock.lockInterruptibly();</code>)。<br>其它和<code>poll()</code>，非阻塞版本相同。</p>
+<h3 id="take"><a href="#take" class="headerlink" title="take()"></a>take()</h3><p>一直阻塞的版本，直到获取。返回获取到的数据。<br>响应中断，由于使用的加锁方法是<code>takeLock.lockInterruptibly();</code>。<br>其它与<code>poll()</code>相同。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/08/19/java-LinkedBlockingQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="LinkedBlockingQueue精读(2)">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/08/18/java-ArrayBlockingQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="ArrayBlockingQueue精读(2)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#LinkedBlockingQueue实现特点"><span class="toc-text">LinkedBlockingQueue实现特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#生产者线程和消费者线程互相唤醒"><span class="toc-text">生产者线程和消费者线程互相唤醒</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#成员变量和构造方法"><span class="toc-text">成员变量和构造方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#成员变量"><span class="toc-text">成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#enqueue-和dequeeu"><span class="toc-text">enqueue()和dequeeu()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#enqueue"><span class="toc-text">enqueue()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#dequeeu"><span class="toc-text">dequeeu()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#offer-和put"><span class="toc-text">offer()和put()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#offer-e"><span class="toc-text">offer(e)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#offer-e-timeout-unit"><span class="toc-text">offer(e, timeout, unit)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#put"><span class="toc-text">put()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#poll-和take"><span class="toc-text">poll()和take()</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#poll"><span class="toc-text">poll()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#poll-timeout-unit"><span class="toc-text">poll(timeout, unit)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#take"><span class="toc-text">take()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

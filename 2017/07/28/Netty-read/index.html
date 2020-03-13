@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        Netty-read过程｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2017/07/28/Netty-read/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>Netty-read过程</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2017-07-28
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            Netty-read过程
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>无论是服务器端的，还是客户端中，<code>read()</code>，从<code>channel</code>中读取数据到<code>ByteBuf</code>的过程都是一样的 。</p>
+<h2 id="netty-read过程"><a href="#netty-read过程" class="headerlink" title="netty-read过程"></a>netty-read过程</h2><ol>
+<li>在<code>NioEventLoop</code>的<code>run</code>方法中，通过<code>selector</code>检查到<code>OP_READ</code>事件就绪。由于是<code>NioSocektChannel</code>类的对象，所以调用<code>NioByteUnsafe</code>里面的<code>read()</code>方法，读取<code>channel</code>中的数据。</li>
+<li>在<code>unsafe.read()</code>方法中，每读取一次<code>channel</code>数据，就创建一个新的<code>ByteBuf</code>对象，并且在<code>ChannelPipeLine</code>中传播一次<code>ChannelRead</code>的事件。</li>
+<li>当从<code>channel</code>中读取所有数据后，后者到达本次<code>read()</code>最大读取次数(最大16次)时，在<code>ChannelPipeLine</code>中传播一次<code>ChannelReadComplete</code>的事件。</li>
+</ol>
+<h2 id="NioByteUnsafe中的read"><a href="#NioByteUnsafe中的read" class="headerlink" title="NioByteUnsafe中的read()"></a>NioByteUnsafe中的read()</h2><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title">read</span><span class="params">()</span> </span>&#123;</span><br><span class="line">       	    <span class="comment">// 获取ChannelConfig</span></span><br><span class="line">            <span class="keyword">final</span> ChannelConfig config = config();</span><br><span class="line">	    <span class="comment">// 获取ChannelPipeLine</span></span><br><span class="line">            <span class="keyword">final</span> ChannelPipeline pipeline = pipeline();</span><br><span class="line">	    <span class="comment">// 默认ByteBufAllocate</span></span><br><span class="line">            <span class="keyword">final</span> ByteBufAllocator allocator = config.getAllocator();</span><br><span class="line">	    <span class="comment">// 为读取的ByteBuf设置参数</span></span><br><span class="line">            <span class="keyword">final</span> RecvByteBufAllocator.Handle allocHandle = recvBufAllocHandle();</span><br><span class="line">	    <span class="comment">// rset 重置handle参数</span></span><br><span class="line">            allocHandle.reset(config);</span><br><span class="line"></span><br><span class="line">            ByteBuf byteBuf = <span class="keyword">null</span>;</span><br><span class="line">            <span class="keyword">boolean</span> close = <span class="keyword">false</span>;</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="keyword">do</span> &#123;</span><br><span class="line">		    <span class="comment">// 创建一个ByteBuf</span></span><br><span class="line">                    byteBuf = allocHandle.allocate(allocator);</span><br><span class="line">		    <span class="comment">// 进行读取</span></span><br><span class="line">                    allocHandle.lastBytesRead(doReadBytes(byteBuf));</span><br><span class="line">                    <span class="keyword">if</span> (allocHandle.lastBytesRead() &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">                        <span class="comment">// nothing was read. release the buffer.</span></span><br><span class="line">                        byteBuf.release();</span><br><span class="line">                        byteBuf = <span class="keyword">null</span>;</span><br><span class="line">                        close = allocHandle.lastBytesRead() &lt; <span class="number">0</span>;</span><br><span class="line">                        <span class="keyword">break</span>;</span><br><span class="line">                    &#125;</span><br><span class="line"></span><br><span class="line">                    allocHandle.incMessagesRead(<span class="number">1</span>);</span><br><span class="line">                    readPending = <span class="keyword">false</span>;</span><br><span class="line">		    <span class="comment">// 传播ChannelRead事件</span></span><br><span class="line">                    pipeline.fireChannelRead(byteBuf);</span><br><span class="line">                    byteBuf = <span class="keyword">null</span>;</span><br><span class="line">		&#125; <span class="keyword">while</span> (allocHandle.continueReading());</span><br><span class="line">		<span class="comment">// readComplete</span></span><br><span class="line">                allocHandle.readComplete();</span><br><span class="line">		<span class="comment">//传播ChannelReadComplete事件</span></span><br><span class="line">		pipeline.fireChannelReadComplete();</span><br><span class="line"></span><br><span class="line">                <span class="keyword">if</span> (close) &#123;</span><br><span class="line">                    closeOnRead(pipeline);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125; <span class="keyword">catch</span> (Throwable t) &#123;</span><br><span class="line">                handleReadException(pipeline, byteBuf, t, close, allocHandle);</span><br><span class="line">            &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">                <span class="keyword">if</span> (!readPending &amp;&amp; !config.isAutoRead()) &#123;</span><br><span class="line">                    removeReadOp();</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>read()</code>方法步骤：</p>
+<ol>
+<li>获取<code>RecvByteBufAllocator.Handle</code>，由上篇可知，<code>Handle</code>是<code>ByteBufAllocate</code>的<code>外观类</code>，在原来<code>ByteBufAlocate</code>的基础上，添加了根据上一次<code>read()</code>读取数据量的情况，为下一次<code>read()</code>时，<code>ByteBuf</code>对象的内存进行自适应调节。</li>
+<li>调用<code>handl.reset()</code>将<code>handle</code>的参数重置：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">reset</span><span class="params">(ChannelConfig config)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">this</span>.config = config;</span><br><span class="line">	    <span class="comment">// 16 每次可以尝试读取的最大消息数目(读的次数)</span></span><br><span class="line">            maxMessagePerRead = maxMessagesPerRead();</span><br><span class="line">	    <span class="comment">// 0 </span></span><br><span class="line">            totalMessages = totalBytesRead = <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure></li>
+<li>调用<code>doReadBytes(byteBuf)</code>从<code>channel</code>读取数据。<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">int</span> <span class="title">doReadBytes</span><span class="params">(ByteBuf byteBuf)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">	<span class="comment">// 获取handle</span></span><br><span class="line">	<span class="keyword">final</span> RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();</span><br><span class="line">	<span class="comment">// 设置attemptedBytesRead为bytebuf的写空间</span></span><br><span class="line">        allocHandle.attemptedBytesRead(byteBuf.writableBytes());</span><br><span class="line">	<span class="comment">// 从channel尝试读取 attemptedBytesRead个字节数据</span></span><br><span class="line">        <span class="keyword">return</span> byteBuf.writeBytes(javaChannel(), allocHandle.attemptedBytesRead());</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+可以看出把<code>attemptedBytesRead</code>设置为<code>ByteBuf</code>的写空间，然后尝试通过从<code>channel</code>读取将<code>bytebuf</code>填满。然后将读取的字节数，更新到<code>handle</code>：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line">allocHandle.lastBytesRead(doReadBytes(byteBuf));</span><br></pre></td></tr></table></figure></li>
+<li>通过调用<code>allocHandle.incMessagesRead(1);</code>更新本次<code>read()</code>操作的读取次数。</li>
+<li>在<code>ChannelPipeLine</code>中传播<code>ChannelRead</code>事件。</li>
+<li>查看是否需要继续读取，继续<code>while</code>循环。调用<code>allocHandle.continueReading()</code>：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">continueReading</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> continueReading(defaultMaybeMoreSupplier);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * 继续读的条件4个：</span></span><br><span class="line"><span class="comment">	 * 1. autoread开启</span></span><br><span class="line"><span class="comment">	 * 2. 上次读的数据把ByteBuf写空间填满了 </span></span><br><span class="line"><span class="comment">	 * 3. 本次读的次数 &lt; maxMessagePerRead = 16</span></span><br><span class="line"><span class="comment">	 * 4. 读的数据字节数 &gt; 0</span></span><br><span class="line"><span class="comment">	 */</span>                	</span><br><span class="line">        <span class="meta">@Override</span></span><br><span class="line">        <span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">continueReading</span><span class="params">(UncheckedBooleanSupplier</span></span></span><br><span class="line"><span class="function"><span class="params">					maybeMoreDataSupplier)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> config.isAutoRead() &amp;&amp;</span><br><span class="line">                   maybeMoreDataSupplier.get() &amp;&amp;</span><br><span class="line">                   totalMessages &lt; maxMessagePerRead &amp;&amp;</span><br><span class="line">                   totalBytesRead &gt; <span class="number">0</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+只有符合上面全部4个条件才继续读取。</li>
+<li>最后在<code>ChannelPipeLine</code>中传播<code>ChannelReadCompleted</code>事件。</li>
+</ol>
+<h2 id="关于ByteBuf释放的问题"><a href="#关于ByteBuf释放的问题" class="headerlink" title="关于ByteBuf释放的问题"></a>关于ByteBuf释放的问题</h2><p><code>ByteBuf</code>在<code>AbstractNioByetChannel.AbstractNioUnsafe.read()</code>方法中创建。关于这个<code>ByteBuf</code>释放有3种情况：</p>
+<ol>
+<li>手动释放：自己在最后一个<code>ChannelHandler</code>的<code>ChannelRead()</code>方法中释放(<code>realease()</code>)。</li>
+<li>自动释放：在自己的最后一个<code>ChannelHandler</code>的<code>ChannelRead()</code>方法结束前，调用<code>ctx.fireChannelRead()</code>方法继续传播该事件，最后会在<code>pipeline</code>中的<code>tail</code>中得到释放：<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// tail</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">channelRead</span><span class="params">(ChannelHandlerContext ctx, Object msg)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">            onUnhandledInboundMessage(msg);</span><br><span class="line">        &#125;</span><br><span class="line"><span class="function"><span class="keyword">protected</span> <span class="keyword">void</span> <span class="title">onUnhandledInboundException</span><span class="params">(Throwable cause)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            logger.warn(</span><br><span class="line">                    <span class="string">"An exceptionCaught() event was fired, </span></span><br><span class="line"><span class="string">		    and it reached at the tail of the pipeline. "</span> +</span><br><span class="line">                    <span class="string">"It usually means the last handler in the </span></span><br><span class="line"><span class="string">		    pipeline did not handle the exception."</span>,</span><br><span class="line">                    cause);</span><br><span class="line">        &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">            ReferenceCountUtil.release(cause);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+由于继续传播到<code>tail</code>，<code>tail</code>会释放该<code>ByteBuf</code>。</li>
+</ol>
+<p>这里选择手动释放比较合适，较少运行时间。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/07/29/Netty-write/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-write过程">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/07/21/Netty-accept/" data-toggle="tooltip" data-placement="top"
+                           title="Netty-accept过程">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#netty-read过程"><span class="toc-text">netty-read过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#NioByteUnsafe中的read"><span class="toc-text">NioByteUnsafe中的read()</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#关于ByteBuf释放的问题"><span class="toc-text">关于ByteBuf释放的问题</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Netty"
+                           title="Netty">Netty</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

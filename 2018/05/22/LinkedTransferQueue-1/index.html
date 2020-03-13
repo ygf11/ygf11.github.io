@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        LinkedTransferQueue(1)-实现特征和Node节点类｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2018/05/22/LinkedTransferQueue-1/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>LinkedTransferQueue(1)-实现特征和Node节点类</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2018-05-22
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            LinkedTransferQueue(1)-实现特征和Node节点类
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <h2 id="实现特点"><a href="#实现特点" class="headerlink" title="实现特点"></a>实现特点</h2><ol>
+<li>基于链表实现的无界队列。</li>
+<li><code>size()</code>方法的运行时间不是常量时间，而是会遍历链表。由于<code>异步队列</code>的特性，所以采取遍历统计的方式，虽然当其它线程同时进行存放或者获取的操作，结果也不一定准确。这点与<code>ConcurrentLinkedQueue</code>实现类似。</li>
+<li>内存一致性：向队列存放<code>item</code>的生产者线程先行于(<code>happen-before</code>)之后获取<code>item</code>的消费者线程。</li>
+<li><code>LinkedTransferQueue</code>的实现是<code>ConcurrentLinkedQueue</code>、<code>SynchronousQueue</code>和<code>LinkedBlockingQueue</code>的超集：<br>4.1. <code>ConcurrentLinkedQueue</code>：由于是无界队列，所以<code>LinkedTransferQueue</code>中的<code>add</code>、<code>put</code>和<code>offer</code>方法都不会阻塞。<code>poll()</code>方法也会立即返回。实现了非阻塞高并发的队列。<br>4.2. <code>SynchronousQueue</code>：<code>LinkedTransferQueue</code>中的<code>transfer()</code>方法会阻塞，直到有消费者取走<code>item</code>，这与<code>SynchronousQueue</code>中的<code>put()</code>方法一样。所以实现了生产者直接交付产品给消费者的模式。<br>4.3. <code>LinkedBlockingQueue</code>：无界阻塞队列。<code>add</code>、<code>put</code>和<code>offer</code>都不会阻塞，但是<code>take</code>和<code>timeout</code>版本的<code>poll()</code>方法有可能会阻塞。</li>
+</ol>
+<h2 id="Node节点类"><a href="#Node节点类" class="headerlink" title="Node节点类"></a>Node节点类</h2><ol>
+<li><code>Node</code>类成员变量</li>
+<li><code>Node</code>类主要方法</li>
+</ol>
+<h3 id="Node类成员变量"><a href="#Node类成员变量" class="headerlink" title="Node类成员变量"></a>Node类成员变量</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="comment">// 是否是数据节点</span></span><br><span class="line"><span class="keyword">final</span> <span class="keyword">boolean</span> isData;</span><br><span class="line"><span class="comment">// 当为数据节点时 存放数据对象 否则为匹配节点时 为Null</span></span><br><span class="line"><span class="keyword">volatile</span> Object item;   </span><br><span class="line"><span class="comment">// 指向队列的下一个节点</span></span><br><span class="line"><span class="keyword">volatile</span> Node next;</span><br><span class="line"><span class="comment">// 节点对应的等待线程</span></span><br><span class="line"><span class="keyword">volatile</span> Thread waiter;</span><br></pre></td></tr></table></figure>
+<ol>
+<li><code>isData</code>：<code>true</code>表示这是个数据<code>(data)</code>类型的节点，否则<code>false</code>表示这个是一个请求<code>request</code>类型的节点。</li>
+<li><code>item</code>：当节点为<code>数据类型</code>时存放<code>队列数据对象</code>，否则节点为<code>请求</code>类型时<code>item</code>域为<code>null</code>，因为<code>请求</code>是向队列拿取数据对象。当节点为<code>数据类型</code>时会在构造方法中设置。</li>
+<li><code>next</code>：指向队列的下一个节点。</li>
+<li><code>waiter</code>：表示节点对应的线程，在<code>transfer()</code>、<code>take()</code>、<code>tryTransfer(l, TimeUnit)</code>和<code>poll(l,TimeUnit)</code>时可能会阻塞的线程。节点构造时<code>waiter</code>域为<code>null</code>，在进入阻塞时被设置(实质是最后一次自旋结束后设置)。</li>
+</ol>
+<h3 id="Node类主要方法"><a href="#Node类主要方法" class="headerlink" title="Node类主要方法"></a>Node类主要方法</h3><ol>
+<li><code>Node(item,isData)</code>：节点的构造方法，参数为<code>item</code>和<code>isData</code>。</li>
+<li><code>casNext(cmp,val)</code>：<code>cas</code>更新节点的<code>next</code>域。</li>
+<li><code>casItem(cmp,val)</code>：<code>cas</code>更新节点的<code>item</code>域。</li>
+<li><code>forgetNext()</code>：使用<code>putObject()</code>方法让<code>next</code>域指向<code>node</code>自身。方便<code>gc</code>回收队列中清除的<code>节点对象</code>。一般在更新<code>head</code>引用时使用。<code>putObject()</code>是<code>unsafe</code>的方法，仅仅可以跨越权限，直接修改内存。</li>
+<li><code>forgetContents()</code>：使用<code>putObject()</code>方法让<code>item</code>域指向节点自身，让<code>waiter</code>域设置为<code>null</code>。在节点<code>匹配成功</code>或者<code>节点取消等待(超时、中断)</code>时使用，主要为了方便<code>gc</code>回收原本的<code>item</code>和<code>waiter</code>对象。</li>
+<li><code>isMatched()</code>：判断节点是否已经匹配完成。当<code>item</code>域指向自身节点，<code>item</code>域与<code>isData</code>状态矛盾，两者有一个为<code>true</code>则说明节点已经匹配完成。</li>
+<li><code>isUnmatchedRequest()</code>：判断到前节点是否为尚未匹配的请求节点。</li>
+<li><code>cannotPrecede(havaData)</code>：如果<code>给定类型</code>的节点<code>是否不能插入</code>队列尾部，则返回<code>true</code>。即<code>给定类型</code>的节点和队列中的节点类型不同(可以匹配成功)。否则相同类型，可以插入队列尾部，则返回<code>false</code>。</li>
+<li><code>tryMatchData()</code>：在<code>remove()</code>方法中使用，尝试匹配数据节点。</li>
+</ol>
+<h3 id="构造方法"><a href="#构造方法" class="headerlink" title="构造方法"></a>构造方法</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line">Node(Object item, <span class="keyword">boolean</span> isData) &#123;</span><br><span class="line">            UNSAFE.putObject(<span class="keyword">this</span>, itemOffset, item); <span class="comment">// relaxed write</span></span><br><span class="line">            <span class="keyword">this</span>.isData = isData;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>分别设置<code>item</code>和<code>isData</code>。可以看出没有设置<code>waiter</code>，而<code>waiter</code>是在<code>线程</code>进入<code>等待</code>后<code>自旋结束</code>时设置的。<code>putObject()</code>方法直接修改内存，不需要访问权限。</p>
+<h3 id="casNext-cmp-val"><a href="#casNext-cmp-val" class="headerlink" title="casNext(cmp,val)"></a>casNext(cmp,val)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">casNext</span><span class="params">(Node cmp, Node val)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, nextOffset, cmp, val);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>cas</code>更新<code>next</code>域。</p>
+<h3 id="casItem-cmp-val"><a href="#casItem-cmp-val" class="headerlink" title="casItem(cmp, val)"></a>casItem(cmp, val)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">casItem</span><span class="params">(Object cmp, Object val)</span> </span>&#123;</span><br><span class="line">            <span class="comment">// assert cmp == null || cmp.getClass() != Node.class;</span></span><br><span class="line">            <span class="keyword">return</span> UNSAFE.compareAndSwapObject(<span class="keyword">this</span>, itemOffset, cmp, val);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>cas</code>更新<code>item</code>域。</p>
+<h3 id="forgetNext"><a href="#forgetNext" class="headerlink" title="forgetNext()"></a>forgetNext()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">forgetNext</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            UNSAFE.putObject(<span class="keyword">this</span>, nextOffset, <span class="keyword">this</span>);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>使用<code>putObject()</code>方法将<code>next</code>域指向节点自身引用。方便<code>gc</code>回收被<code>清理</code>的<code>节点对象</code>。<br>一般在更新<code>head</code>引用中被调用。</p>
+<h3 id="forgetContents"><a href="#forgetContents" class="headerlink" title="forgetContents()"></a>forgetContents()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">void</span> <span class="title">forgetContents</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            UNSAFE.putObject(<span class="keyword">this</span>, itemOffset, <span class="keyword">this</span>);</span><br><span class="line">            UNSAFE.putObject(<span class="keyword">this</span>, waiterOffset, <span class="keyword">null</span>);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>forgetContents()</code>方法完成两个更新：</p>
+<ol>
+<li>节点的<code>item</code>域指向节点自身引用。</li>
+<li>节点的<code>waiter</code>域置为<code>null</code>。<br>这个方法在<code>匹配成功</code>或者<code>取消等待</code>的条件下使用，主要为了方便<code>gc</code>回收原本<code>item</code>和<code>waiter</code>指向的对象。</li>
+</ol>
+<h3 id="isMatched"><a href="#isMatched" class="headerlink" title="isMatched()"></a>isMatched()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isMatched</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            Object x = item;</span><br><span class="line">            <span class="keyword">return</span> (x == <span class="keyword">this</span>) || ((x == <span class="keyword">null</span>) == isData);</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>两种情况说明节点匹配成功：</p>
+<ol>
+<li>节点的<code>item</code>域指向节点自身引用。</li>
+<li>节点的<code>item</code>域引用状态与<code>isData</code>相矛盾。</li>
+</ol>
+<h3 id="isUnmatchedRequest"><a href="#isUnmatchedRequest" class="headerlink" title="isUnmatchedRequest()"></a>isUnmatchedRequest()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">isUnmatchedRequest</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="keyword">return</span> !isData &amp;&amp; item == <span class="keyword">null</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>判断节点是否是一个<code>未匹配</code>的<code>请求</code>节点。判断条件：</p>
+<ol>
+<li><code>isData</code>为<code>false</code>。</li>
+<li><code>item</code>域为<code>null</code>则说明节点尚未匹配成功。</li>
+</ol>
+<h3 id="cannotPrecede-haveData"><a href="#cannotPrecede-haveData" class="headerlink" title="cannotPrecede(haveData)"></a>cannotPrecede(haveData)</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">cannotPrecede</span><span class="params">(<span class="keyword">boolean</span> haveData)</span> </span>&#123;</span><br><span class="line">            <span class="keyword">boolean</span> d = isData;</span><br><span class="line">            Object x;</span><br><span class="line">            <span class="keyword">return</span> d != haveData &amp;&amp; (x = item) != <span class="keyword">this</span> &amp;&amp; (x != <span class="keyword">null</span>) == d;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p>判断<code>给定类型</code>的节点能否和当前节点匹配成功：</p>
+<ol>
+<li>即两个节点类型不同。</li>
+<li>当前节点尚未被匹配或者被取消。<br>当返回<code>true</code>时，也说明给定状态的节点不能插入到队列尾部(因为类型不同)。</li>
+</ol>
+<h3 id="tryMatchData"><a href="#tryMatchData" class="headerlink" title="tryMatchData()"></a>tryMatchData()</h3><figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">final</span> <span class="keyword">boolean</span> <span class="title">tryMatchData</span><span class="params">()</span> </span>&#123;</span><br><span class="line">            <span class="comment">// assert isData;</span></span><br><span class="line">	    Object x = item;</span><br><span class="line">	    <span class="comment">// 当item域不为null(数据域)</span></span><br><span class="line">	    <span class="comment">// 且item域没有指向node自身(没有从队列移除)</span></span><br><span class="line">	    <span class="comment">// 且cas将item域更新为null成功</span></span><br><span class="line">            <span class="keyword">if</span> (x != <span class="keyword">null</span> &amp;&amp; x != <span class="keyword">this</span> &amp;&amp; casItem(x, <span class="keyword">null</span>)) &#123;</span><br><span class="line">		<span class="comment">// 唤醒当前这个节点代表的等待线程</span></span><br><span class="line">		LockSupport.unpark(waiter);</span><br><span class="line">		<span class="comment">// 返回true</span></span><br><span class="line">                <span class="keyword">return</span> <span class="keyword">true</span>;</span><br><span class="line">            &#125;</span><br><span class="line">	    <span class="comment">// 否则匹配失败 返回false</span></span><br><span class="line">            <span class="keyword">return</span> <span class="keyword">false</span>;</span><br><span class="line">        &#125;</span><br></pre></td></tr></table></figure>
+<p><code>tryMatchData()</code>尝试将当前数据节点进行匹配，即唤醒等待线程(如果存在)。<br>这个方法一般用于<code>remove()</code>方法中。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2018/05/24/LinkedTransferQueue-2/" data-toggle="tooltip" data-placement="top"
+                           title="LinkedTransferQueue(2)-成员变量和核心方法">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/10/08/java-CopyOnWriteArrayList-2/" data-toggle="tooltip" data-placement="top"
+                           title="java-CopyOnWriteArrayList(2)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#实现特点"><span class="toc-text">实现特点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Node节点类"><span class="toc-text">Node节点类</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Node类成员变量"><span class="toc-text">Node类成员变量</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Node类主要方法"><span class="toc-text">Node类主要方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#构造方法"><span class="toc-text">构造方法</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#casNext-cmp-val"><span class="toc-text">casNext(cmp,val)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#casItem-cmp-val"><span class="toc-text">casItem(cmp, val)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#forgetNext"><span class="toc-text">forgetNext()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#forgetContents"><span class="toc-text">forgetContents()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isMatched"><span class="toc-text">isMatched()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#isUnmatchedRequest"><span class="toc-text">isUnmatchedRequest()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#cannotPrecede-haveData"><span class="toc-text">cannotPrecede(haveData)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tryMatchData"><span class="toc-text">tryMatchData()</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>
