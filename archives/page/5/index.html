@@ -167,6 +167,183 @@
 
 <div class="post-preview "
      style="background-image: url('')">
+    <a href="/2017/08/17/java-SynchronousQueue-3/">
+        <h2 class="post-title">
+            SynchronousQueue精读(3)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先SynchronousQueue源码基于jdk-1.7
+内容
+构造方法
+一些不支持的方法
+transfer()的返回值
+offer()和put()
+poll()和take()
+
+构造方法SynchronousQueue可以在构造的时候，指定公平性。默认不指定选用非公平模式的栈实现。
+publ..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/17/java-SynchronousQueue-2/">
+        <h2 class="post-title">
+            SynchronousQueue精读(2)-queue
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先SynchronousQueue源码基于jdk-1.7SynchronousQueue是无锁实现的阻塞队列。queue实现的是公平模式，包含一个head和tail指针，初始时head = tail，head.next = null：
+
+插入在tail插入。
+取出在head取出。
+
+所以实现f..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/17/java-SynchronousQueue-1/">
+        <h2 class="post-title">
+            SynchronousQueue精读(1)-stack
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先SynchronousQueue源码基于jdk-1.7SynchronousQueue是无锁实现的阻塞队列。Stack实现的是非公平模式，初始时head为null，所以head指向第一个有效的结点：
+
+插入到stack时，插入到head。
+从stack取出时，从head取出。
+
+所以实现li..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/14/java-ConcurrentHashMap-3/">
+        <h2 class="post-title">
+            jdk7-ConcurrentHashMap精读
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-14
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                ConcurrentHashMap源码基于jdk-1.7
+ConcurrentHashMap1.7和ConcurrentHashMap1.6区别
+Segment数组中的segment对象，不再是ConcurrentHashMap构造时全部创建，而是在构造方法里面只创建segment[0]的对象，..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/13/java-ConcurrentHashMap-2/">
+        <h2 class="post-title">
+            ConcurrentHashMap精读(2)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-13
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                ConcurrentHashMap源码基于jdk-1.6
+内容
+扩容机制
+读不加锁、写加锁的实现
+三种遍历
+
+扩容机制首先明确，扩容的对象是segment.table，扩容步骤：
+
+在put()方法中，如果count &gt;= threshold，则调用rehash()进行扩容。
+在rehas..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/13/java-ConcurrentHashMap-1/">
+        <h2 class="post-title">
+            ConcurrentHashMap精读(1)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-13
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                ConcurrentHashMap源码基于jdk-1.6
+内容
+默认参数
+HashEntry类
+Segment类
+散列方法
+nullkey和nullvalue
+put()和get()过程
+
+默认参数static final int DEFAULT_INITIAL_CAPACITY = 16;st..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
     <a href="/2017/08/12/java-WeakHashMap-2/">
         <h2 class="post-title">
             WeakHashMap(精读)
@@ -222,173 +399,6 @@ keySet()获取迭代器，遍历Key。
 values()获取迭代器，遍历value。
 
 三种遍历的顺寻，都是无序的，从ta..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/11/java-LinkedHashMap-2/">
-        <h2 class="post-title">
-            Java-LinkedHashMap精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-11
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先LinkedHashMap源码基于1.7
-内容
-成员变量
-HashMap中Entry类的扩展
-put()、get()和remove()方法的实现
-
-成员变量LinkedHashMap继承自HashMap，在此基础上增加了一个用于遍历的双链表。
-// 有序双链表头部private transi..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/10/java-hashmap-3/">
-        <h2 class="post-title">
-            Java-HashMap精读(2)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-10
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先HashMap源码基于1.7
-内容
-Key=null或者Value=null的情况
-当get()查找的时候，判断目标entry的条件
-三种遍历以及及时失败策略
-
-Key=null或者Value=null的情况在HashMap中添加键值对时，允许key或者value为null，或者都为null..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/10/java-hashmap-2/">
-        <h2 class="post-title">
-            Java-HashMap精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-10
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先HashMap源码基于jdk-1.7
-内容
-初始化参数
-散列方法
-扩容机制
-HashMap常见面试题(即实现的注意点)
-
-初始化参数HashMap中有三个重要的参数：初始容量，负载因子和最大容量。其中初始容量和负载因子尤为重要，影响着HashMap的性能。
-
-默认DEFAULT_INITIA..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/04/Netty-close/">
-        <h2 class="post-title">
-            Netty-连接关闭过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-04
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                nio channel中的半连接
-SocketChannel.shutdownOutput()：关闭写半连接，在另外一端会使read事件就绪，但是读channel时，会抛出ClosedChannelException的异常。
-SocketChannel.shutdownInput()：关闭读半连..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/29/Netty-write/">
-        <h2 class="post-title">
-            Netty-write过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-29
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                netty中向SocketChannel写入数据，即向另一台主机发送数据的过程分为两部分：
-
-ctx.write()：将ByteBuf缓存在channel的ChannelOutboundBuffer中。
-ctx.flush()：将ChannelOutboundBuffer缓存的数据尝试全部写入S..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/28/Netty-read/">
-        <h2 class="post-title">
-            Netty-read过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-28
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                无论是服务器端的，还是客户端中，read()，从channel中读取数据到ByteBuf的过程都是一样的 。
-netty-read过程
-在NioEventLoop的run方法中，通过selector检查到OP_READ事件就绪。由于是NioSocektChannel类的对象，所以调用NioByt..
             </p>
         </div>
     </a>
@@ -468,6 +478,13 @@ netty-read过程
                        rel="7">Netty</a>
                     
                     
+                    
+                    
+                    
+                    
+                    
+                    <a href="/tags/#leveldb" title="leveldb"
+                       rel="5">leveldb</a>
                     
                     
                 </div>

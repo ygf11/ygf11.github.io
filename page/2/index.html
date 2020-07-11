@@ -287,6 +287,195 @@
 
 <div class="post-preview "
      style="background-image: url('')">
+    <a href="/2018/05/24/LinkedTransferQueue-2/">
+        <h2 class="post-title">
+            LinkedTransferQueue(2)-成员变量和核心方法
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2018-05-24
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                LinkedTransferQueue中的大部分方法(add、put、offer、poll、take、transfer、tryTransfer)都是由xfer()方法实现的，所以xfer()方法是所有方法的核心。
+内容
+成员变量
+重要成员方法2.1 xfer()：向队列插入或者取走数据对象的方法..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2018/05/22/LinkedTransferQueue-1/">
+        <h2 class="post-title">
+            LinkedTransferQueue(1)-实现特征和Node节点类
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2018-05-22
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                实现特点
+基于链表实现的无界队列。
+size()方法的运行时间不是常量时间，而是会遍历链表。由于异步队列的特性，所以采取遍历统计的方式，虽然当其它线程同时进行存放或者获取的操作，结果也不一定准确。这点与ConcurrentLinkedQueue实现类似。
+内存一致性：向队列存放item的生产者线..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/10/08/java-CopyOnWriteArrayList-2/">
+        <h2 class="post-title">
+            java-CopyOnWriteArrayList(2)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-10-08
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                CopyOnWriteArrayList源码基于jdk-1.7
+内容
+写操作
+集合类操作
+迭代器COWIterator
+总结
+
+写操作写操作包括：
+
+set：将list中指定位置的对象替换为element。
+add：在list尾部或者指定位置插入element。
+remove：删除list中指定..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/10/08/java-CopyOnWriteArrayList/">
+        <h2 class="post-title">
+            java-CopyOnWriteArrayList(1)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-10-08
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                CopyOnWriteArrayList源码基于jdk-1.7
+内容
+实现特征
+成员变量
+构造方法
+Arrays.copyOf()和System.arraycopy()
+indexOf()和lastIndexOf()
+get()
+clone()
+
+实现特征
+是一个线程安全的ArrayList的变..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/09/30/HashMap-Problem/">
+        <h2 class="post-title">
+            并发使用HashMap产生死循环问题
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-09-30
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                内容
+并发put引起的三个问题
+并发put造成冲突单链表成环
+并发put元素丢失但不成环
+并发put元素丢失而且成环
+get会出现的问题
+总结
+
+并发put引起的三个问题
+并发put造成冲突单链表成环
+并发put元素丢失但不成环
+并发put元素丢失而且成环
+
+上面三个问题都是在多线程并发put时..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/09/14/java-hashtable/">
+        <h2 class="post-title">
+            java-hashtable
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-09-14
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先Hashtable源码基于jdk-1.7
+内容
+Hashtable的实现特点。
+Hashtable与HashMap的区别
+散列方法
+扩容机制
+遍历(fail-fast)
+
+Hashtable的实现特点
+不允许null-key和null-value。
+必须实现hashCode()和equals..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
     <a href="/2017/08/30/java-ThreadPoolExecutor-4/">
         <h2 class="post-title">
             ThreadPoolExecutor精读(4)-关闭线程池
@@ -336,202 +525,6 @@ getTask()：从任务队列中获取任务。
 processWorkerExit()：工作线程退出的处理。
 runWorker()：工作线程不断从任务队列获取任务，然后执行。
 exe..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/28/java-ThreadPoolExecutor-2/">
-        <h2 class="post-title">
-            ThreadPoolExecutor精读(2)-Worker
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-28
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先ThreadPoolExecutor源码基于jdk-1.7
-内容
-Worker类继承结构
-成员变量
-构造方法
-AQS方法定义非重入独占锁
-run()方法
-
-Worker类继承结构Worker表示线程池的一个工作线程对象。Worker类继承了AQS抽象类，实现了Runnable接口。
-priv..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/28/java-ThreadPoolExecutor-1/">
-        <h2 class="post-title">
-            ThreadPoolExecutor精读(1)-线程池状态变量
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-28
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先ThreadPoolExecutor源码基于jdk-1.7
-内容
-实现特征
-线程池状态和工作线程数量
-关于ctl的操作
-成员变量
-
-实现特征
-线程池实现了Executor接口，实现了execute()方法，将任务的提交和执行分离。
-线程池主要解决两个问题：2.1 提高大量异步任务执行的性能。..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/27/java-CountDownLatch/">
-        <h2 class="post-title">
-            CountDownLatch精读
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-27
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先CountDownLatch源码基于jdk-1.7
-内容
-特征
-sync内部类
-CountDownLatch构造方法
-CountDownLatch闭锁主要方法
-
-特征
-定义：一个或者多个线程，等待另外N个线程完成某个事件后才执行。
-使用count进行初始化。
-CountDownLatch是一..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/26/java-CyclicBarrier/">
-        <h2 class="post-title">
-            CyclicBarrier精读
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-26
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先CyclicBarrier源码基于jdk-1.7
-内容
-CyclicBarrier特征
-CyclicBarrier与CountDownLatch的区别
-成员变量
-辅助方法
-CyclicBarrier构造方法
-CyclicBarrier其它方法
-
-CyclicBarrier特征
-栅栏定义：一个..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/24/java-ReentrantLock-2/">
-        <h2 class="post-title">
-            ReentrantLock精读(2)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-24
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先ReentrantLock源码基于jdk-1.7
-内容
-成员变量
-构造方法
-获取锁
-释放锁
-其它方法
-
-成员变量private final Sync sync;
-ReentrantLock只有一个成员变量，就是sync。这里有两种sync，NonfairSync和FairSync。代表公平锁..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/24/java-ReentrantLock-1/">
-        <h2 class="post-title">
-            ReentrantLock精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-24
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先ReentrantLock源码基于jdk-1.7
-内容
-重入锁的实现特征
-Sync类
-非公平的NonfairSync
-公平的FairSync
-
-重入锁的实现特征
-可重入。
-构造器可以指定公平性。
-tryLock()始终调用非公平的获取。
-ReentrantLock与AQS一样序列化只保存st..
             </p>
         </div>
     </a>
@@ -611,6 +604,13 @@ ReentrantLock与AQS一样序列化只保存st..
                        rel="7">Netty</a>
                     
                     
+                    
+                    
+                    
+                    
+                    
+                    <a href="/tags/#leveldb" title="leveldb"
+                       rel="5">leveldb</a>
                     
                     
                 </div>

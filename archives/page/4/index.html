@@ -167,6 +167,190 @@
 
 <div class="post-preview "
      style="background-image: url('')">
+    <a href="/2017/08/22/java-AQS-C-4/">
+        <h2 class="post-title">
+            AQS精读(4)-共享模式
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-22
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先AbstractQueuedSynchronizer源码基于jdk-1.7
+内容
+共享模式与独占模式在实现上的区别
+setHeadAndPropagate() 
+设置状态为PROPAGATE的原因
+忽略中断的acquireShared()
+释放共享状态releaseShared()
+响应中断..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/21/java-AQS-C-3/">
+        <h2 class="post-title">
+            AQS精读(3)-独占模式
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-21
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先AbstractQueuedSynchronizer源码基于jdk-1.7
+内容
+独占模式获取和释放用到的方法
+忽略中断的获取(acquire(arg))
+release(arg)
+响应中断的获取acquireInterruptibly(arg)
+timeout版本的tryAcquireNa..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/21/java-AQS-C-2/">
+        <h2 class="post-title">
+            AQS精读(2)-sync队列
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-21
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先AbstractQueuedSynchronizer源码基于jdk-1.7
+内容
+AQS成员变量
+state变量的操作 
+sync队列的操作
+AQS需要子类实现的5种方法
+
+AQS成员变量private transient volatile Node head;private transie..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/21/java-AQS-C-1/">
+        <h2 class="post-title">
+            AQS精读(1)-Snode
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-21
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先AbstractQueuedSynchronizer源码基于jdk-1.7
+内容
+特征
+Snode结点两种模式
+Snode5种状态
+Snode类方法
+
+特征
+ASQ是一个抽象类，volatile变量state的含义由子类定义。
+AQS支持两种模式的结点，Exclusive和Shared。Ex..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/19/java-LinkedBlockingQueue-2/">
+        <h2 class="post-title">
+            LinkedBlockingQueue精读(2)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-19
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先LinkedBlockingQueue源码基于jdk-1.7
+内容
+unlink()
+remove()
+遍历
+线程安全性和可见性
+
+unlink()// 移除p    void unlink(Node&lt;E&gt; p, Node&lt;E&gt; trail) &#123;      ..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/19/java-LinkedBlockingQueue-1/">
+        <h2 class="post-title">
+            LinkedBlockingQueue精读(1)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-19
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先LinkedBlockingQueue源码基于jdk-1.7
+内容
+LinkedBlockingQueue实现特点
+生产者线程和消费者线程互相唤醒
+成员变量和构造方法
+enqueue()和dequeeu()
+offer()和put()
+poll()和take()
+remove()
+遍历
+线程..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
     <a href="/2017/08/18/java-ArrayBlockingQueue-2/">
         <h2 class="post-title">
             ArrayBlockingQueue精读(2)
@@ -218,183 +402,6 @@ poll()和take()
 ArrayBlockingQueue特点
 有界阻塞队列
 队列的容量在..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/17/java-SynchronousQueue-3/">
-        <h2 class="post-title">
-            SynchronousQueue精读(3)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先SynchronousQueue源码基于jdk-1.7
-内容
-构造方法
-一些不支持的方法
-transfer()的返回值
-offer()和put()
-poll()和take()
-
-构造方法SynchronousQueue可以在构造的时候，指定公平性。默认不指定选用非公平模式的栈实现。
-publ..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/17/java-SynchronousQueue-2/">
-        <h2 class="post-title">
-            SynchronousQueue精读(2)-queue
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先SynchronousQueue源码基于jdk-1.7SynchronousQueue是无锁实现的阻塞队列。queue实现的是公平模式，包含一个head和tail指针，初始时head = tail，head.next = null：
-
-插入在tail插入。
-取出在head取出。
-
-所以实现f..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/17/java-SynchronousQueue-1/">
-        <h2 class="post-title">
-            SynchronousQueue精读(1)-stack
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-17
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先SynchronousQueue源码基于jdk-1.7SynchronousQueue是无锁实现的阻塞队列。Stack实现的是非公平模式，初始时head为null，所以head指向第一个有效的结点：
-
-插入到stack时，插入到head。
-从stack取出时，从head取出。
-
-所以实现li..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/14/java-ConcurrentHashMap-3/">
-        <h2 class="post-title">
-            jdk7-ConcurrentHashMap精读
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-14
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                ConcurrentHashMap源码基于jdk-1.7
-ConcurrentHashMap1.7和ConcurrentHashMap1.6区别
-Segment数组中的segment对象，不再是ConcurrentHashMap构造时全部创建，而是在构造方法里面只创建segment[0]的对象，..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/13/java-ConcurrentHashMap-2/">
-        <h2 class="post-title">
-            ConcurrentHashMap精读(2)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-13
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                ConcurrentHashMap源码基于jdk-1.6
-内容
-扩容机制
-读不加锁、写加锁的实现
-三种遍历
-
-扩容机制首先明确，扩容的对象是segment.table，扩容步骤：
-
-在put()方法中，如果count &gt;= threshold，则调用rehash()进行扩容。
-在rehas..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/13/java-ConcurrentHashMap-1/">
-        <h2 class="post-title">
-            ConcurrentHashMap精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-13
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                ConcurrentHashMap源码基于jdk-1.6
-内容
-默认参数
-HashEntry类
-Segment类
-散列方法
-nullkey和nullvalue
-put()和get()过程
-
-默认参数static final int DEFAULT_INITIAL_CAPACITY = 16;st..
             </p>
         </div>
     </a>
@@ -474,6 +481,13 @@ put()和get()过程
                        rel="7">Netty</a>
                     
                     
+                    
+                    
+                    
+                    
+                    
+                    <a href="/tags/#leveldb" title="leveldb"
+                       rel="5">leveldb</a>
                     
                     
                 </div>

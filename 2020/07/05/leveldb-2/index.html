@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        leveldb原理解析(2)｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2020/07/05/leveldb-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>leveldb原理解析(2)</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2020-07-05
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#leveldb"
+                           title="leveldb">leveldb</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            leveldb原理解析(2)
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>上一篇文章围绕<code>leveldb</code>实现<code>lsm-tree</code>进行了一些推论，最后得出了<code>leveldb</code>的整体结构。但是还有一些问题并没有讲解清楚,这一章就根据我对<code>leveldb</code>的理解，尝试解释这些问题。首先<code>leveldb</code>的整体架构如下:<br><img src="/img/leveldb-2.png" alt=""></p>
+<h2 id="问题"><a href="#问题" class="headerlink" title="问题"></a>问题</h2><p>上一章讲了<code>leveldb</code>为什么要分层和合并，但是没有讲分层结构如何生成？以及什么时候触发合并？所以这一章围绕几个问题来进行讨论。问题如下:</p>
+<ol>
+<li><code>leveldb</code>多层结构如何形成</li>
+<li><code>leveldb</code>触发文件合并的时机</li>
+<li><code>leveldb</code>写入速度过快的问题</li>
+</ol>
+<h2 id="leveldb多层的形成"><a href="#leveldb多层的形成" class="headerlink" title="leveldb多层的形成"></a><code>leveldb</code>多层的形成</h2><p><code>leveldb</code>是通过各个<code>level</code>不断合并(compaction)，逐渐形成多层结构的。刚开始的时候，各层都是没有数据的。当开始写入数据:</p>
+<ol>
+<li>首先将<code>memtable</code>写满时，<code>leveldb</code>就会将<code>memtable</code>的指针赋予<code>imm-table</code>，然后<code>memtable</code>指向一个新的内存<code>skiplist</code>，让客户端继续写入。后台线程随后会将<code>imm-table</code>写入<code>level0</code>层中，并且是一整个<code>imm-table</code>占用一个文件。所以<code>level0</code>的文件就是这样不断生成的。</li>
+<li>当<code>level0</code>的某个<code>文件x</code>，触发了合并，那么后台线程就会尝试将<code>文件x</code>合并到<code>level1</code>。由于<code>level0</code>中各个文件存储的<code>key</code>范围是可能重叠的，所以想要将<code>文件x</code>合并到<code>level1</code>时，首先需要找出<code>level0</code>中所有与<code>文件x</code>重叠的文件，然后以这些文件包含的<code>key</code>范围再去<code>level1</code>找重叠的文件，最后将两层找出来的文件进行合并，顺序写入到<code>level1</code>的多个文件。因为每次都是从<code>level0</code>取一个范围与<code>level1</code>合并，所以合并后<code>level1</code>之间的文件都是不重叠的。这样<code>level1</code>层的文件也生成了。</li>
+<li>接下来，当<code>level1</code>层的某个<code>文件y</code>触发了合并，因为<code>level1</code>层文件的<code>key</code>范围互不重叠，所以就以<code>文件y</code>包含的<code>key</code>范围，去<code>level2</code>上找所有与之重叠的文件，然后把它们合并，顺序写入<code>level2</code>层的多个文件中。需要注意的是<code>level2</code>层与<code>level1</code>层一样，该层文件的<code>key</code>范围也是互不重叠的。这样<code>level2</code>层也生成了。</li>
+<li>最后其它的<code>level</code>生成原理和<code>level2</code>的生成一样，且文件的<code>key</code>范围互不重叠。</li>
+</ol>
+<h2 id="leveldb触发文件合并的时机"><a href="#leveldb触发文件合并的时机" class="headerlink" title="leveldb触发文件合并的时机"></a><code>leveldb</code>触发文件合并的时机</h2><p><code>leveldb</code>触发合并的时机有两个,分别是:</p>
+<ol>
+<li><code>size_compaction</code>：也就是当某一层文件超过阀值时，就选择该层的一个文件合并到下一层。</li>
+<li><code>seek_compaction</code>：因为<code>leveldb</code>使用的是稀疏索引，所以不必要的文件<code>IO</code>，还是无法避免的(也就是目标<code>key</code>落在一个文件的范围内，但是这个文件并不包含这个<code>key</code>)。如果数据库在运行过程中，对一个文件不必要的访问过多，那么就意味着这个文件已经成为读取性能提高的障碍了，所以有必要把它合并掉，当它被合并到下一层之后, 下一次再出现原来不必要的文件读取时，就相当于跳过了这个合并的文件，从而相对得提高了读取性能。</li>
+</ol>
+<h2 id="leveldb写入速度过快的问题"><a href="#leveldb写入速度过快的问题" class="headerlink" title="leveldb写入速度过快的问题"></a><code>leveldb</code>写入速度过快的问题</h2><p>如果在<code>leveldb</code>中写入速度超过后台线程合并的速度，那么就会导致<code>level0</code>文件急剧增加，这种增加对于<code>leveldb</code>读取性能是很不利的，因为合并操作本身就是为了解决单层文件过多的问题。所以当写入速度过快时，<code>leveldb</code>会采取相应的措施来让写入减速:</p>
+<ol>
+<li>如果写入时，发现<code>level0</code>文件个数大于等于<code>8</code>个，则说明写入速度太快了，需要适当减缓写入速度，所以让写入线程等待<code>1ms</code>，然后重新检查。</li>
+<li>如果<code>memtable</code>写满了，且<code>imm-table</code>写入<code>level0</code>还没有完成，则说明写入速度太快，故让写入线程等待，直到有其它写入线程写入成功当前才会被唤醒。这个情况写入线程等待的时间比情况1还要长。</li>
+<li>如果写入时，发现<code>level0</code>文件个数大于等于<code>12</code>个，这种情况和情况2的处理方式一样，都是完全阻塞写入线程，直到有其它写入线程写入成功当前才会被唤醒。</li>
+</ol>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/07/05/leveldb-benchmark-1/" data-toggle="tooltip" data-placement="top"
+                           title="leveldb性能测试(1)-参数">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/07/05/leveldb-1/" data-toggle="tooltip" data-placement="top"
+                           title="leveldb原理解析(1)">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#问题"><span class="toc-text">问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#leveldb多层的形成"><span class="toc-text">leveldb多层的形成</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#leveldb触发文件合并的时机"><span class="toc-text">leveldb触发文件合并的时机</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#leveldb写入速度过快的问题"><span class="toc-text">leveldb写入速度过快的问题</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#leveldb"
+                           title="leveldb">leveldb</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>

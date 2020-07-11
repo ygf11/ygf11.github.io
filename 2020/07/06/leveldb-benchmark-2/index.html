@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!-- Head tag -->
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ygf的个人博客">
+    <meta name="keyword" content="">
+    <meta name="theme-color" content="#600090">
+    <meta name="msapplication-navbutton-color" content="#600090">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="#600090">
+    <link rel="shortcut icon" href="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-person-128.png">
+    <link rel="alternate" type="application/atom+xml" title="rlkbr" href="/atom.xml">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/animate.css/3.5.2/animate.min.css">
+    <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
+    <title>
+        
+        leveldb性能测试(2)-write_buffer_size｜rlkbr&#39;s blog
+        
+    </title>
+
+    <link rel="canonical" href="http://haojen.github.io/2020/07/06/leveldb-benchmark-2/">
+
+    <!-- Bootstrap Core CSS -->
+    
+<link rel="stylesheet" href="/css/bootstrap.min.css">
+
+
+    <!-- Custom CSS -->
+    
+<link rel="stylesheet" href="/css/blog-style.css">
+
+
+    <!-- Pygments Github CSS -->
+    
+<link rel="stylesheet" href="/css/syntax.css">
+
+<meta name="generator" content="Hexo 4.2.0"></head>
+
+<style>
+
+    header.intro-header {
+        background-image: url('//o7bkkhiex.bkt.clouddn.com/lion-blur-bg.jpg')
+    }
+</style>
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="" class="animated fadeIn">
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
+" data-ishome = "false" >
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand animated pulse" href="/">
+                <span class="brand-logo">
+                    rlkbr
+                </span>
+                's Blog
+            </a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <!-- /.navbar-collapse -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+					
+                    
+                        
+							
+                        <li>
+                            <a href="/Tags/">Tags</a>
+                        </li>
+							
+						
+                    
+                        
+							
+                        <li>
+                            <a href="/archives/">archives</a>
+                        </li>
+							
+						
+                    
+					
+					
+                </ul>
+            </div>
+        </div>
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+//    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+<!-- Main Content -->
+
+<!--only post-->
+
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>leveldb性能测试(2)-write_buffer_size</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2020-07-06
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#leveldb"
+                           title="leveldb">leveldb</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="post-title-haojen">
+        <span>
+            leveldb性能测试(2)-write_buffer_size
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>这一篇文章我们来看一下，<code>leveldb</code>的写性能随着<code>write_buffer_size</code>这个参数变化的情况。根据上一篇参数解释可以看出，<code>write_buffer_size</code>表示<code>memtable</code>占用内存的最大值，所以对读写性能都有影响，接下来我们来看下顺序写和随机写随着这个参数值变化的趋势。</p>
+<h1 id="内容"><a href="#内容" class="headerlink" title="内容"></a>内容</h1><ol>
+<li>基本参数</li>
+<li>顺序写</li>
+<li>随机写</li>
+</ol>
+<h2 id="基本参数"><a href="#基本参数" class="headerlink" title="基本参数"></a>基本参数</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">key: 16 byte</span><br><span class="line">value: 100 byte</span><br><span class="line">write_buffer_size: need change</span><br><span class="line">block_cache(default): 8M</span><br><span class="line">compression_ratio:0.5</span><br><span class="line">num: 10000000</span><br><span class="line">block_size(default):4K</span><br><span class="line">max_file_size(default):2M</span><br><span class="line">max_open_files: 1000</span><br><span class="line">filter_policy: none</span><br></pre></td></tr></table></figure>
+
+<h2 id="ssd-顺序写"><a href="#ssd-顺序写" class="headerlink" title="ssd 顺序写"></a>ssd 顺序写</h2><p><img src="/img/leveldb-benchmark-2-1.png" alt=""></p>
+<p>可以看出来随着<code>write_buffer_size</code>的不断增加，其实写入性能并没有增长，而是一直在<code>35w</code>左右波动。但是这个写入速度已经很快了，与官方号称的每秒<code>40W</code>写入很接近了。</p>
+<h2 id="hdd-顺序写"><a href="#hdd-顺序写" class="headerlink" title="hdd 顺序写"></a>hdd 顺序写</h2><p><img src="/img/leveldb-benchmark-2-2.png" alt=""></p>
+<p>从上图可以看出当<code>write_buffer_size</code>的很小时，随着<code>write_buffer_size</code>不断增大，<code>leveldb</code>顺序写的性能不断攀升，直到达到峰值，在<code>32M</code>和<code>64M</code>之间达到最大，这时的写入速度达到了每秒<code>45W</code>(比ssd还快)。其实这个趋势也蛮好理解的，因为<code>write_buffer_size</code>决定了<code>memtable</code>的最大大小，而<code>level0</code>层的文件就是<code>memtable</code>转化为<code>immtable</code>直接写入的，所以<code>write_buffer_size</code>这个值决定了<code>level0</code>文件的大小，当<code>write_buffer_size</code>很小时，<code>level0</code>文件大大小也很小，这就产生了两个影响写入性能的因素:</p>
+<ol>
+<li><code>level0</code>层文件过多，需要进行大量合并，即将<code>level0</code>层文件合并到<code>level1</code>，此时<code>immtable</code>写入<code>level0</code>层的速度肯定受此影响，这就会影响这个数据库的写入。</li>
+<li><code>level0</code>层文件过多时，<code>leveldb</code>对此进行了保护，不会无限制得让写入速度过快，导致合并操作跟不上写入速度。当<code>memtable</code>满的时候，会检查<code>level0</code>文件是否过多以及<code>immtable</code>是否顺利写入<code>level0</code>，这两点任一不满足都会让写入线程阻塞，以便让合并操作跟上写入线程的写入速度。</li>
+</ol>
+<p>当<code>werite_buffer_size</code>超过<code>64M</code>时，可以看出写入性能并没有提高，而是在每秒<code>42W</code>写入速度上波动，这一点可以用上面第二个因素来解释:</p>
+<ol>
+<li>当<code>write_buffer_size</code>很大时，也就意味着<code>immtable</code>和<code>memtable</code>很大，这样<code>immtable</code>写入<code>level0</code>时，写入的数据量也就相对而言很大，前面提到当<code>memtable</code>写满且<code>immtable</code>尚未完全写入<code>level0</code>时，<code>leveldb</code>会有意阻塞写入线程，使写入速度减小。所以当<code>write_buffer_size</code>变得很大时，就可能会出现写入卡顿时间较长的情况。</li>
+</ol>
+<h2 id="ssd-和-hdd的随机写"><a href="#ssd-和-hdd的随机写" class="headerlink" title="ssd 和 hdd的随机写"></a>ssd 和 hdd的随机写</h2><p><img src="/img/leveldb-benchmark-2-3.png" alt=""></p>
+<p>从上面可以看出来，<code>ssd</code>和<code>hdd</code>随机写入速度随着<code>write_buffer_size</code>的变化趋势是基本相同的。当<code>write_buffer_size</code>逐渐变大时，整个随机写入的性能在不断得提升。这个现象可以用<code>lsm-tree</code>的基本思想来解释:</p>
+<ol>
+<li><code>lsm-tree</code>的核心思想是通过延迟写入，将原来需要随机写入磁盘的数据转化为顺序写，从而提高写入性能。在我们这个随机写中, <code>write_buffer_size</code>越大，那么延迟写入的数据量就越多，就有更多的数据是顺序写入磁盘的，这对写入性能的提升非常有帮助。</li>
+</ol>
+<p>但是当<code>write_buffer_size</code>的大小达到<code>64M/128M</code>之后，整体的写入速度开始波动了，这个跟上面顺序写降速的原因都是一样的，<code>leveldb</code>为了让合并速度能跟上写入速度，当写入速度过大时，就要开始有意阻塞写入线程，强制降低写入速度。</p>
+<h2 id="当写入速度过大时，leveldb主动阻塞写的原因"><a href="#当写入速度过大时，leveldb主动阻塞写的原因" class="headerlink" title="当写入速度过大时，leveldb主动阻塞写的原因"></a>当写入速度过大时，leveldb主动阻塞写的原因</h2><p>这个主要是为了让<code>level0</code>的文件个数处于正常的状态，如果写入速度一直处于超过合并速度的情况，那么会导致<code>level0</code>文件数量过多，虽然这种情况下写入速度非常快，但是读取搜索时，就要花费更多得时间在<code>level0</code>文件的<code>IO</code>上，使读取性能崩溃。</p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/07/07/leveldb-benchmark-3/" data-toggle="tooltip" data-placement="top"
+                           title="leveldb-benchmark-(3)-block_cache">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/07/05/leveldb-benchmark-1/" data-toggle="tooltip" data-placement="top"
+                           title="leveldb性能测试(1)-参数">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#内容"><span class="toc-text">内容</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#基本参数"><span class="toc-text">基本参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ssd-顺序写"><span class="toc-text">ssd 顺序写</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#hdd-顺序写"><span class="toc-text">hdd 顺序写</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ssd-和-hdd的随机写"><span class="toc-text">ssd 和 hdd的随机写</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#当写入速度过大时，leveldb主动阻塞写的原因"><span class="toc-text">当写入速度过大时，leveldb主动阻塞写的原因</span></a></li></ol></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#leveldb"
+                           title="leveldb">leveldb</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
+
+<!-- Footer -->
+<!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <br>
+                <ul class="list-inline text-center">
+                
+                
+                
+
+                
+
+                
+
+                
+
+                
+
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; rlkbr 2020
+                    <br>
+                    <span id="busuanzi_container_site_pv" style="font-size: 12px;">PV: <span id="busuanzi_value_site_pv"></span> Times</span>
+                    <br>
+                    Theme by <a href="https://haojen.github.io/">Haojen Ma</a>
+                </p>
+
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+
+<script src="/js/jquery.min.js"></script>
+
+
+<!-- Bootstrap Core JavaScript -->
+
+<script src="/js/bootstrap.min.js"></script>
+
+
+<!-- Custom Theme JavaScript -->
+
+<script src="/js/blog.js"></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("http://haojen.github.io/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("//cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+<!-- swiftype -->
+<script type="text/javascript">
+  (function(w,d,t,u,n,s,e){w['SwiftypeObject']=n;w[n]=w[n]||function(){
+  (w[n].q=w[n].q||[]).push(arguments);};s=d.createElement(t);
+  e=d.getElementsByTagName(t)[0];s.async=1;s.src=u;e.parentNode.insertBefore(s,e);
+  })(window,document,'script','//s.swiftypecdn.com/install/v2/st.js','_st');
+
+  _st('install','','2.0.0');
+</script>
+
+<script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<!--wechat title img-->
+<img class="wechat-title-img" src="">
+</body>
+
+</html>
