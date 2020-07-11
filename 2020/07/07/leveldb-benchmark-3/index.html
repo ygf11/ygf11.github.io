@@ -205,6 +205,7 @@
 </ol>
 <h2 id="现象1的解释"><a href="#现象1的解释" class="headerlink" title="现象1的解释"></a>现象1的解释</h2><p>对于上面<code>256M</code>以内读取速度没有增加，可以通过文件系统的页缓存来解释。在做这个随机读的性能测试时，我用<code>top</code>命令查看应用内存变化，当写入数据的时候，应用的内存消耗非常少，基本等于<code>write_buffer_size</code><em>2 + <code>block_cache</code>的大小，而当进行大量读取的时候，整个内存的使用飙升，内存使用的数值恰好是<code>write_buffer_size</code></em>2 + <code>block_cache</code>+ 页缓存，其中页缓存会缓存整个数据库的数据，比如当前应用就是总的文件大小<code>629.4M</code>。所以最后可以看出随机读的情况下，设置块缓存设置并没有什么意义，因为页缓存会缓存所有压缩的数据，所有的读取都会在页缓存命中。</p>
 <h2 id="现象2的解释"><a href="#现象2的解释" class="headerlink" title="现象2的解释"></a>现象2的解释</h2><p>当<code>block_cache</code>在<code>512M</code>到<code>768M</code>之间时，应用读取性能飙升。其实在这样的条件下，应用的所有数据都已经缓存到了<code>block_cache</code>中，相比较读取内核<code>页缓存</code>的数据，读取<code>block_cache</code>肯定要更快，因为少了内核态和用户空间的上下文切换。</p>
+<p>测试数据和代码:<br><code>https://github.com/ygf11/leveldb-benchmark</code></p>
 
                 <hr>
                 
