@@ -18,11 +18,11 @@
     <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
     <title>
         
-        leveldb-benchmark-(3)-block_cache｜rlkbr&#39;s blog
+        Java中ArrayList和LinkedList的性能测试｜rlkbr&#39;s blog
         
     </title>
 
-    <link rel="canonical" href="http://haojen.github.io/2020/07/07/leveldb-benchmark-3/">
+    <link rel="canonical" href="http://haojen.github.io/2020/08/21/list-benchmark/">
 
     <!-- Bootstrap Core CSS -->
     
@@ -159,18 +159,18 @@
         <div class="row">
             <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
                 <div class="post-heading">
-                    <h1>leveldb-benchmark-(3)-block_cache</h1>
+                    <h1>Java中ArrayList和LinkedList的性能测试</h1>
                     
                     <span class="meta">
                          作者 rlkbr
                         <span>
-                          日期 2020-07-07
+                          日期 2020-08-21
                          </span>
                     </span>
                     <div class="tags text-center">
                         
-                        <a class="tag" href="/tags/#leveldb"
-                           title="leveldb">leveldb</a>
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
                         
                     </div>
                 </div>
@@ -179,7 +179,7 @@
     </div>
     <div class="post-title-haojen">
         <span>
-            leveldb-benchmark-(3)-block_cache
+            Java中ArrayList和LinkedList的性能测试
         </span>
     </div>
 </header>
@@ -190,37 +190,41 @@
         <div class="row">
             <!-- Post Container -->
             <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
-                <p>上一篇文章我们做了<code>write_buffer_size</code>相关的性能测试，那么这一章来看下<code>block_cache</code>参数对性能的影响。首先<code>block_cache</code>这个参数表示缓存<code>block</code>可以使用的缓存机制，<code>leveldb</code>内置了<code>LRU</code>缓存。从缓存这个机制上我们也可以看出主要为了提高读性能，但是具体测下来让我非常惊讶。</p>
-<h2 id="基本参数"><a href="#基本参数" class="headerlink" title="基本参数"></a>基本参数</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">key: 16 byte</span><br><span class="line">value: 100 byte</span><br><span class="line">write_buffer_size(default): 4M</span><br><span class="line">block_cache: need change</span><br><span class="line">compression_ratio:0.5</span><br><span class="line">num: 10000000</span><br><span class="line">block_size(default):4K</span><br><span class="line">max_file_size(default):2M</span><br><span class="line">max_open_files: 1000</span><br><span class="line">filter_policy: none</span><br></pre></td></tr></table></figure>
-
-<h2 id="运行信息"><a href="#运行信息" class="headerlink" title="运行信息"></a>运行信息</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">LevelDB:    version 1.20</span><br><span class="line">Date:       Tue Jul  7 21:53:47 2020</span><br><span class="line">CPU:        4 * Intel(R) Core(TM) i5-6300HQ CPU @ 2.30GHz</span><br><span class="line">CPUCache:   6144 KB</span><br><span class="line">Keys:       16 bytes each</span><br><span class="line">Values:     100 bytes each (50 bytes after compression)</span><br><span class="line">Entries:    10000000</span><br><span class="line">RawSize:    1106.3 MB (estimated)</span><br><span class="line">FileSize:   629.4 MB (estimated)</span><br></pre></td></tr></table></figure>
-
-
-
-<h2 id="测试结果"><a href="#测试结果" class="headerlink" title="测试结果"></a>测试结果</h2><p><img src="/img/leveldb-benchmark-3-1.png" alt=""></p>
-<p>从上面可以看出两个现象:</p>
-<ol>
-<li>当<code>block_cache</code>在<code>256M</code>以内时，无论是<code>ssd</code>还是<code>hdd</code>读取速度并没有随着<code>cache</code>的增加而加快，而是不断波动。</li>
-<li>当<code>block_cache</code>在<code>512</code>到<code>768M</code>时，读取性能直线攀升。</li>
+                <p><code>Java</code>中<code>list</code>列表是非常常用的集合工具类，<code>JDK</code>中提供了<code>ArrayList</code>和<code>LinkedList</code>两种实现。我们都知道一个是基于数组实现，一个是基于链表实现，但是两者性能有什么差别呢? 这篇文章就用<code>jmh</code>来测试下两者的性能。</p>
+<h2 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h2><ol>
+<li>头插(<code>head-insert</code>)</li>
+<li>中间插入(<code>middle-insert</code>)</li>
+<li>尾插(<code>tail-insert</code>)</li>
+<li>迭代器遍历和<code>get(index)</code>遍历</li>
 </ol>
-<h2 id="现象1的解释"><a href="#现象1的解释" class="headerlink" title="现象1的解释"></a>现象1的解释</h2><p>对于上面<code>256M</code>以内读取速度没有增加，可以通过文件系统的页缓存来解释。在做这个随机读的性能测试时，我用<code>top</code>命令查看应用内存变化，当写入数据的时候，应用的内存消耗非常少，基本等于<code>write_buffer_size</code><em>2 + <code>block_cache</code>的大小，而当进行大量读取的时候，整个内存的使用飙升，内存使用的数值恰好是<code>write_buffer_size</code></em>2 + <code>block_cache</code>+ 页缓存，其中页缓存会缓存整个数据库的数据，比如当前应用就是总的文件大小<code>629.4M</code>。所以最后可以看出随机读的情况下，设置块缓存设置并没有什么意义，因为页缓存会缓存所有压缩的数据，所有的读取都会在页缓存命中。</p>
-<h2 id="现象2的解释"><a href="#现象2的解释" class="headerlink" title="现象2的解释"></a>现象2的解释</h2><p>当<code>block_cache</code>在<code>512M</code>到<code>768M</code>之间时，应用读取性能飙升。其实在这样的条件下，应用的所有数据都已经缓存到了<code>block_cache</code>中，相比较读取内核<code>页缓存</code>的数据，读取<code>block_cache</code>肯定要更快，因为少了内核态和用户空间的上下文切换。</p>
-<p>测试数据和代码:<br><code>https://github.com/ygf11/leveldb-benchmark</code></p>
+<h2 id="测试条件"><a href="#测试条件" class="headerlink" title="测试条件"></a>测试条件</h2><ol>
+<li>每个插入操作都进行100000次。</li>
+<li><code>ArrayList</code>初始容量都是100000，防止扩容对性能的影响。</li>
+<li><code>JDK8</code></li>
+</ol>
+<h2 id="头插性能比较"><a href="#头插性能比较" class="headerlink" title="头插性能比较"></a>头插性能比较</h2><p><img src="/img/list-head-insert.png" alt=""></p>
+<p>性能比较: 头插操作，<code>LinkedList</code>性能远远好于<code>ArrayList</code>。<br>结果分析: 头插操作中，每插入一次，<code>ArrayList</code>都要将原来的数据向后移动一个位置，所以性能非常不好，而<code>LinkedList</code>直接插入就好了。</p>
+<h2 id="中间插入性能比较"><a href="#中间插入性能比较" class="headerlink" title="中间插入性能比较"></a>中间插入性能比较</h2><p><img src="/img/list-middle-insert.png" alt=""></p>
+<p>性能比较: 可以看出<code>ArrayList</code>中间插入的性能略好于自己的头插性能，但是远远好于<code>LinkedList</code>的中间插入性能。<br>结果分析:</p>
+<ol>
+<li>因为是中间插入，所以<code>ArrayList</code>的中间插入，需要移动的数据要比头插操作少，所以性能略好。</li>
+<li><code>LinkedList</code>在确定位置的情况插入是很快的，但是中间插入需要先遍历找到中间的节点才能插入，所以性能变得很差。</li>
+</ol>
+<h2 id="尾插性能比较"><a href="#尾插性能比较" class="headerlink" title="尾插性能比较"></a>尾插性能比较</h2><p><img src="/img/list-tail-insert.png" alt=""></p>
+<p>性能比较: 性能相当，但是<code>ArrayList</code>略快。<br>结果分析: 由于是最后插入，在容量够的时候，<code>ArrayList</code>不需要额外操作，所以很快。对于<code>LinkedList</code>由于有<code>head</code>和<code>tail</code>保存位置，所以尾插不需要遍历定位，所以速度也非常快。</p>
+<h2 id="遍历性能比较"><a href="#遍历性能比较" class="headerlink" title="遍历性能比较"></a>遍历性能比较</h2><p><img src="/img/list-iterate.png" alt=""></p>
+<p>性能比较: <code>ArrayList</code>的<code>get</code>， 以及两者的迭代器访问时间都差不多，但是<code>LinkedList</code>的<code>get</code>循环访问性能非常差。<br>结果分析: 首先两者的迭代器访问都不会有额外的定位操作，<code>ArrayList</code>由于是数组实现，所以<code>get</code>操作都是O(1)，所以这三个操作性能相当。但是<code>LinkedList</code>循环<code>get</code>中，每次访问前都要先遍历锁定位置，所以性能非常不好。</p>
+<h2 id="测试数据和代码"><a href="#测试数据和代码" class="headerlink" title="测试数据和代码"></a>测试数据和代码</h2><p><a href="mailto:git@github.com">git@github.com</a>:ygf11/java-benchmark.git</p>
 
                 <hr>
                 
 
                 <ul class="pager">
                     
-                    <li class="previous">
-                        <a href="/2020/08/21/list-benchmark/" data-toggle="tooltip" data-placement="top"
-                           title="Java中ArrayList和LinkedList的性能测试">&larr; Previous Post</a>
-                    </li>
-                    
                     
                     <li class="next">
-                        <a href="/2020/07/06/leveldb-benchmark-2/" data-toggle="tooltip" data-placement="top"
-                           title="leveldb性能测试(2)-write_buffer_size">Next Post &rarr;</a>
+                        <a href="/2020/07/07/leveldb-benchmark-3/" data-toggle="tooltip" data-placement="top"
+                           title="leveldb-benchmark-(3)-block_cache">Next Post &rarr;</a>
                     </li>
                     
                 </ul>
@@ -239,7 +243,7 @@
 
             <div class="hidden-xs col-sm-3 toc-col">
                 <div class="toc-wrap">
-                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#基本参数"><span class="toc-text">基本参数</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#运行信息"><span class="toc-text">运行信息</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试结果"><span class="toc-text">测试结果</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#现象1的解释"><span class="toc-text">现象1的解释</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#现象2的解释"><span class="toc-text">现象2的解释</span></a></li></ol>
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#操作"><span class="toc-text">操作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试条件"><span class="toc-text">测试条件</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#头插性能比较"><span class="toc-text">头插性能比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#中间插入性能比较"><span class="toc-text">中间插入性能比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#尾插性能比较"><span class="toc-text">尾插性能比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#遍历性能比较"><span class="toc-text">遍历性能比较</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试数据和代码"><span class="toc-text">测试数据和代码</span></a></li></ol>
                 </div>
             </div>
         </div>
@@ -261,8 +265,8 @@
                     </h5>
                     <div class="tags">
                         
-                        <a class="tag" href="/tags/#leveldb"
-                           title="leveldb">leveldb</a>
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
                         
                     </div>
                 </section>

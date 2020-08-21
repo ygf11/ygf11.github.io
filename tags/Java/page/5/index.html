@@ -167,6 +167,40 @@
 
 <div class="post-preview "
      style="background-image: url('')">
+    <a href="/2017/08/11/java-LinkedHashMap-3/">
+        <h2 class="post-title">
+            Java-LinkedHashMap精读(2)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-11
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先LinkedHashMap源码基于1.7
+内容
+三种遍历
+其它重写的方法
+
+三种遍历HashMap有三种遍历方式：
+
+entrySet()获取迭代器，遍历Entry。
+keySet()获取迭代器，遍历Key。
+values()获取迭代器，遍历value。
+
+三种遍历的顺寻，都是无序的，从ta..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
     <a href="/2017/08/11/java-LinkedHashMap-2/">
         <h2 class="post-title">
             Java-LinkedHashMap精读(1)
@@ -351,34 +385,6 @@ package java.lang;import java.util.*;public inte..
 
 
 
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/03/26/java-hashmap/">
-        <h2 class="post-title">
-            Java-hashmap
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-03-26
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                HashMapHashMap是数组+链表实现的哈希映射。
-tabletransient Entry[] table;
-
-entryfinal K key;V value;Entry&lt;K,V&gt; next;final int hash;
-可以看出来是单链表实现冲突解决的。
-entry的构..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
 
 <!-- 翻页 pager -->
 
@@ -388,6 +394,10 @@ entry的构..
         <a href="/tags/Java/page/4/">&larr; Newer Posts</a>
     </li>
     
+    
+    <li class="next">
+        <a href="/tags/Java/page/6/">Older Posts &rarr;</a>
+    </li>
     
 </ul>
 
@@ -436,7 +446,7 @@ entry的构..
                     
                     
                     <a href="/tags/#Java" title="Java"
-                       rel="40">Java</a>
+                       rel="41">Java</a>
                     
                     
                     
