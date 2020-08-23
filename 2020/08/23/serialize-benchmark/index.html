@@ -18,11 +18,11 @@
     <link rel="stylesheet" href="//cdn.bootcss.com/font-awesome/4.6.3/css/font-awesome.css">
     <title>
         
-        rlkbr&#39;s blog
+        各种序列化协议的性能测试｜rlkbr&#39;s blog
         
     </title>
 
-    <link rel="canonical" href="http://haojen.github.io/archives/2017/07/">
+    <link rel="canonical" href="http://haojen.github.io/2020/08/23/serialize-benchmark/">
 
     <!-- Bootstrap Core CSS -->
     
@@ -49,7 +49,7 @@
 <!-- hack iOS CSS :active style -->
 <body ontouchstart="" class="animated fadeIn">
 <!-- Navigation -->
-<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "false" data-istags="false
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top " id="nav-top" data-ispost = "true" data-istags="false
 " data-ishome = "false" >
     <div class="container-fluid">
         <!-- Brand and toggle get grouped for better mobile display -->
@@ -138,241 +138,154 @@
 
 <!-- Main Content -->
 
+<!--only post-->
 
-<!-- Page Header -->
-<div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 visible-xs-block visible-sm-block">
-    <div class="row">
-        <header class="intro-header">
-            <div class="container">
-                <div class="site-heading text-center">
-                    <div class="about-me">
-                        <!--移动端头部显示-->
-                        <img src=""/>
-                        <h5><a href="/about/">rlkbr</a></h5>
-                        <p>加油!!!</p>
+
+<img class="wechat-title-img"
+     src="">
+
+
+<style>
+    
+    header.intro-header {
+        background-image: url('')
+    }
+
+    
+</style>
+
+<header class="intro-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1 text-center">
+                <div class="post-heading">
+                    <h1>各种序列化协议的性能测试</h1>
+                    
+                    <span class="meta">
+                         作者 rlkbr
+                        <span>
+                          日期 2020-08-23
+                         </span>
+                    </span>
+                    <div class="tags text-center">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
                     </div>
                 </div>
             </div>
-        </header>
-    </div>
-</div>
-<!-- Main Content -->
-<div class="container custom-haojen-container">
-    <!-- Post Container -->
-    <div class="row">
-        <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12 col-xs-12 post-container">
-            <!-- Main Content -->
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/29/Netty-write/">
-        <h2 class="post-title">
-            Netty-write过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-29
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                netty中向SocketChannel写入数据，即向另一台主机发送数据的过程分为两部分：
-
-ctx.write()：将ByteBuf缓存在channel的ChannelOutboundBuffer中。
-ctx.flush()：将ChannelOutboundBuffer缓存的数据尝试全部写入S..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/28/Netty-read/">
-        <h2 class="post-title">
-            Netty-read过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-28
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                无论是服务器端的，还是客户端中，read()，从channel中读取数据到ByteBuf的过程都是一样的 。
-netty-read过程
-在NioEventLoop的run方法中，通过selector检查到OP_READ事件就绪。由于是NioSocektChannel类的对象，所以调用NioByt..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/21/Netty-accept/">
-        <h2 class="post-title">
-            Netty-accept过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-21
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                SocketChannel和ServerSocketChannel active的条件
-服务器端的ServerSocketChannel，active的条件为成功调用channel.bind()方法。
-服务器端的SocketChannel，active的条件为成功调用channel.accept..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/20/Netty-connect/">
-        <h2 class="post-title">
-            Netty-客户端connect过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-20
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                echo代码这里用的是netty.example中的echo代码进行分析
-SocketChannel和ServerSocketChannel active的条件
-服务器端的ServerSocketChannel，active的条件为成功调用channel.bind()方法。
-服务器端的Socke..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/07/19/Netty-bind/">
-        <h2 class="post-title">
-            Netty-服务器bind过程
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-19
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                echo代码这里用的是netty.example中的echo代码进行分析
-server端会涉及到四个handler:
-
-handler，对accpt线程对应channelHandler的初始化。在echo中就是一个LoggerHandler，直接插入即可。标记为1。
-childhandler，对..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-
-<!-- 翻页 pager -->
-
-<ul class="pager">
-    
-    
-</ul>
-
-
-        </div>
-        <!-- Sidebar Container -->
-        <div class="
-                col-lg-3 col-lg-offset-0
-                col-md-3 col-md-offset-0
-                col-sm-12
-                col-xs-12
-                sidebar-container
-            ">
-
-            <!-- About Me -->
-            <section class="visible-md visible-lg" style="padding: 0 18px">
-                <div class="short-about">
-                    <!--侧边栏头像-->
-                    
-                    <h5><a href="/about/">rlkbr</a></h5>
-                    
-                    <p>加油!!!</p>
-                    
-                    <hr>
-                    <!-- SNS Link 社交 -->
-                    <ul class="list-inline">
-                        
-                        
-                        
-
-                        
-
-                        
-
-                        
-
-                        
-                    </ul>
-                </div>
-            </section>
-
-            <!-- Featured Tags  标签 -->
-            
-            <section>
-                <div class="tags">
-                    
-                    
-                    <a href="/tags/#Java" title="Java"
-                       rel="42">Java</a>
-                    
-                    
-                    
-                    <a href="/tags/#Netty" title="Netty"
-                       rel="7">Netty</a>
-                    
-                    
-                    
-                    <a href="/tags/#leveldb" title="leveldb"
-                       rel="5">leveldb</a>
-                    
-                    
-                    
-                    
-                    
-                    
-                </div>
-            </section>
-            
-
-            
-
         </div>
     </div>
-</div>
+    <div class="post-title-haojen">
+        <span>
+            各种序列化协议的性能测试
+        </span>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <!-- Post Container -->
+            <div class="col-lg-8 col-lg-offset-1 col-sm-9 post-container">
+                <p>日常的开发中无论是前后端交互，还是<code>rpc</code>调用，都离不开序列化和反序列化，现在市面上有很多序列化协议，它们的侧重点又都不一样。这篇文章就通过<code>jmh</code>来测试下不同序列化协议的性能。参与测试的协议有<code>Java自带</code>、<code>json</code>、<code>hession</code>、<code>protobuf</code>。</p>
+<h2 id="指标"><a href="#指标" class="headerlink" title="指标"></a>指标</h2><ol>
+<li>序列化之后的字节大小</li>
+<li>序列化的性能</li>
+<li>反序列化的性能</li>
+</ol>
+<p>测试条件:</p>
+<ol>
+<li>序列化和反序列化都是测试操作<code>1000000</code>次消耗时间。</li>
+<li><code>json</code>序列化使用的是<code>Jackson</code>。</li>
+<li>序列化的对象包括<code>list</code>、<code>map</code>、数值和字符串。</li>
+<li><code>JDK8</code>。</li>
+</ol>
+<h2 id="序列化的大小"><a href="#序列化的大小" class="headerlink" title="序列化的大小"></a>序列化的大小</h2><p><img src="/img/serialize-size.png" alt=""></p>
+<p>序列化大小比较: <code>java</code>&gt;<code>json</code>&gt;<code>hession</code>&gt;<code>protobuf</code>。其中<code>java</code>和<code>json</code>相近，<code>hession</code>和<code>protobuf</code>相近。</p>
+<h2 id="序列化时间"><a href="#序列化时间" class="headerlink" title="序列化时间"></a>序列化时间</h2><p><img src="/img/serialize-time.png" alt=""></p>
+<p>序列化时间比较: <code>protobuf</code>&lt;<code>json(jackson)</code>&lt;<code>hession</code>&lt;<code>java</code>。</p>
+<p>结论:</p>
+<ol>
+<li>其实从上面看出<code>json</code>的序列化其实不算很慢了，序列化时间是<code>protobuf</code>的2倍多。</li>
+<li><code>java</code>序列化消耗的时间是<code>protobuf</code>的<code>10</code>，相当慢。</li>
+<li><code>hession</code>序列化性能比<code>json</code>差。</li>
+</ol>
+<h2 id="反序列化时间"><a href="#反序列化时间" class="headerlink" title="反序列化时间"></a>反序列化时间</h2><p><img src="/img/deserialize-time.png" alt=""></p>
+<p>反序列化时间: 趋势与序列化的性能一直，只是<code>protobuf</code>、<code>json</code>和<code>hession</code>间的差距比序列化要小，当然<code>java</code>依旧一样慢。</p>
+<h2 id="测试数据和代码"><a href="#测试数据和代码" class="headerlink" title="测试数据和代码"></a>测试数据和代码</h2><p><code>git@github.com:ygf11/java-benchmark.git</code></p>
+
+                <hr>
+                
+
+                <ul class="pager">
+                    
+                    
+                    <li class="next">
+                        <a href="/2020/08/21/list-benchmark/" data-toggle="tooltip" data-placement="top"
+                           title="Java中ArrayList和LinkedList的性能测试">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+                
+
+                
+
+
+                <!--加入新的评论系统-->
+                
+
+                
+
+            </div>
+
+            <div class="hidden-xs col-sm-3 toc-col">
+                <div class="toc-wrap">
+                    <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#指标"><span class="toc-text">指标</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#序列化的大小"><span class="toc-text">序列化的大小</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#序列化时间"><span class="toc-text">序列化时间</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#反序列化时间"><span class="toc-text">反序列化时间</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#测试数据和代码"><span class="toc-text">测试数据和代码</span></a></li></ol>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Sidebar Container -->
+
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <!-- no hr -->
+                    <h5 class="text-center">
+                        <a href="/tags/">FEATURED TAGS</a>
+                    </h5>
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Java"
+                           title="Java">Java</a>
+                        
+                    </div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+            </div>
+        </div>
+
+    </div>
+</article>
+
+
+
+
+
+
 
 <!-- Footer -->
 <!-- Footer -->

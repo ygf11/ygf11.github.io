@@ -167,6 +167,38 @@
 
 <div class="post-preview "
      style="background-image: url('')">
+    <a href="/2017/08/30/java-ThreadPoolExecutor-4/">
+        <h2 class="post-title">
+            ThreadPoolExecutor精读(4)-关闭线程池
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-30
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先ThreadPoolExecutor源码基于jdk-1.7
+内容
+三个中断工作线程的方法
+tryTerminate()
+shutdown()
+shutdownNow()
+
+三个中断工作线程的方法
+interruptIdleWorkers(boolean onlyOne)
+interruptI..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
     <a href="/2017/08/29/java-ThreadPoolExecutor-3/">
         <h2 class="post-title">
             ThreadPoolExecutor精读(3)-提交任务
@@ -390,37 +422,6 @@ ReentrantLock与AQS一样序列化只保存st..
 
 
 
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/23/java-AQS-C-6/">
-        <h2 class="post-title">
-            AQS精读(6)-CONDITION
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-23
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先AbstractQueuedSynchronizer源码基于jdk-1.7
-内容
-await()
-signal()
-signalAll()
-awaitUninterruptibly()
-
-await()await()：响应中断的await()。
-public final void await..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
 
 <!-- 翻页 pager -->
 
@@ -482,7 +483,7 @@ public final void await..
                     
                     
                     <a href="/tags/#Java" title="Java"
-                       rel="41">Java</a>
+                       rel="42">Java</a>
                     
                     
                     
