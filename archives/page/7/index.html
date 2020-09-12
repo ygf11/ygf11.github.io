@@ -86,7 +86,7 @@
                         
 							
                         <li>
-                            <a href="/Tags/">Tags</a>
+                            <a href="/archives/">archives</a>
                         </li>
 							
 						
@@ -94,7 +94,7 @@
                         
 							
                         <li>
-                            <a href="/archives/">archives</a>
+                            <a href="/Tags/">Tags</a>
                         </li>
 							
 						
@@ -162,6 +162,31 @@
     <div class="row">
         <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12 col-xs-12 post-container">
             <!-- Main Content -->
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/07/28/Netty-read/">
+        <h2 class="post-title">
+            Netty-read过程
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-07-28
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                无论是服务器端的，还是客户端中，read()，从channel中读取数据到ByteBuf的过程都是一样的 。
+netty-read过程
+在NioEventLoop的run方法中，通过selector检查到OP_READ事件就绪。由于是NioSocektChannel类的对象，所以调用NioByt..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
 
 
 
@@ -338,34 +363,6 @@ package java.lang;import java.util.*;public inte..
 
 
 
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/03/26/java-hashmap/">
-        <h2 class="post-title">
-            Java-hashmap
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-03-26
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                HashMapHashMap是数组+链表实现的哈希映射。
-tabletransient Entry[] table;
-
-entryfinal K key;V value;Entry&lt;K,V&gt; next;final int hash;
-可以看出来是单链表实现冲突解决的。
-entry的构..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
 
 <!-- 翻页 pager -->
 
@@ -375,6 +372,10 @@ entry的构..
         <a href="/archives/page/6/">&larr; Newer Posts</a>
     </li>
     
+    
+    <li class="next">
+        <a href="/archives/page/8/">Older Posts &rarr;</a>
+    </li>
     
 </ul>
 

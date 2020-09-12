@@ -86,7 +86,7 @@
                         
 							
                         <li>
-                            <a href="/Tags/">Tags</a>
+                            <a href="/archives/">archives</a>
                         </li>
 							
 						
@@ -94,7 +94,7 @@
                         
 							
                         <li>
-                            <a href="/archives/">archives</a>
+                            <a href="/Tags/">Tags</a>
                         </li>
 							
 						
@@ -162,6 +162,40 @@
     <div class="row">
         <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12 col-xs-12 post-container">
             <!-- Main Content -->
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/24/java-ReentrantLock-1/">
+        <h2 class="post-title">
+            ReentrantLock精读(1)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-24
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                首先ReentrantLock源码基于jdk-1.7
+内容
+重入锁的实现特征
+Sync类
+非公平的NonfairSync
+公平的FairSync
+
+重入锁的实现特征
+可重入。
+构造器可以指定公平性。
+tryLock()始终调用非公平的获取。
+ReentrantLock与AQS一样序列化只保存st..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
 
 
 
@@ -367,39 +401,6 @@ remove()
 线程安全性和可见性
 
 unlink()// 移除p    void unlink(Node&lt;E&gt; p, Node&lt;E&gt; trail) &#123;      ..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
-    <a href="/2017/08/19/java-LinkedBlockingQueue-1/">
-        <h2 class="post-title">
-            LinkedBlockingQueue精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-19
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先LinkedBlockingQueue源码基于jdk-1.7
-内容
-LinkedBlockingQueue实现特点
-生产者线程和消费者线程互相唤醒
-成员变量和构造方法
-enqueue()和dequeeu()
-offer()和put()
-poll()和take()
-remove()
-遍历
-线程..
             </p>
         </div>
     </a>
