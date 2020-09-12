@@ -167,39 +167,6 @@
 
 <div class="post-preview "
      style="background-image: url('')">
-    <a href="/2017/08/19/java-LinkedBlockingQueue-1/">
-        <h2 class="post-title">
-            LinkedBlockingQueue精读(1)
-        </h2>
-        <p class="post-meta">
-            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-19
-        </p>
-        
-        <div class="post-content-preview">
-            <p>
-                首先LinkedBlockingQueue源码基于jdk-1.7
-内容
-LinkedBlockingQueue实现特点
-生产者线程和消费者线程互相唤醒
-成员变量和构造方法
-enqueue()和dequeeu()
-offer()和put()
-poll()和take()
-remove()
-遍历
-线程..
-            </p>
-        </div>
-    </a>
-
-</div>
-
-<hr>
-
-
-
-<div class="post-preview "
-     style="background-image: url('')">
     <a href="/2017/08/18/java-ArrayBlockingQueue-2/">
         <h2 class="post-title">
             ArrayBlockingQueue精读(2)
@@ -396,6 +363,38 @@ Segment数组中的segment对象，不再是ConcurrentHashMap构造时全部创�
 
 在put()方法中，如果count &gt;= threshold，则调用rehash()进行扩容。
 在rehas..
+            </p>
+        </div>
+    </a>
+
+</div>
+
+<hr>
+
+
+
+<div class="post-preview "
+     style="background-image: url('')">
+    <a href="/2017/08/13/java-ConcurrentHashMap-1/">
+        <h2 class="post-title">
+            ConcurrentHashMap精读(1)
+        </h2>
+        <p class="post-meta">
+            <i class="fa fa-calendar" aria-hidden="true"></i> 2017-08-13
+        </p>
+        
+        <div class="post-content-preview">
+            <p>
+                ConcurrentHashMap源码基于jdk-1.6
+内容
+默认参数
+HashEntry类
+Segment类
+散列方法
+nullkey和nullvalue
+put()和get()过程
+
+默认参数static final int DEFAULT_INITIAL_CAPACITY = 16;st..
             </p>
         </div>
     </a>
